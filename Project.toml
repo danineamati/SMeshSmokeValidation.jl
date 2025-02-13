@@ -1,0 +1,13 @@
+name = "SMeshSmokeValidation"
+uuid = "03aa94ec-4857-4b70-b643-f5d81c7dd350"
+authors = ["Daniel Neamati <danineamati@gmail.com>", "Evan Twarog <etwarog@stanford.edu>"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
