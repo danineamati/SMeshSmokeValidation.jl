@@ -3,7 +3,7 @@ module SMeshSmokeValidation
 # This file is formatted to match StanfordAA228V.jl/src/StanfordAA228V.jl
 
 # External dependencies
-using LinearAlgebra
+# using LinearAlgebra
 
 
 # Internal dependencies
