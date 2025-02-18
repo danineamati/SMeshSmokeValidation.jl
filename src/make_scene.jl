@@ -12,12 +12,12 @@ A struct that contains the x, y, and t values of the scene.
 # Fields
 - `burn_polys_t::Vector{Polygon}`: A vector of polygons that represent the
   scene at each time step.
-- `t::Vector{Float64}`: A vector of time values that correspond to the scene
+- `t::Vector{Int64}`: A vector of time values that correspond to the scene
   at each time step.
 """
 struct burn_scene
     burn_polys_t::Vector{Polygon}
-    t::Vector{Float64}
+    t::Vector{Int64}
 end
 
 """
@@ -29,7 +29,7 @@ vertex-based Polygon representation of the scene using the LazySets package.
 # Arguments
 - `x::Vector{Float64}`: The x-coordinates of the scene.
 - `y::Vector{Float64}`: The y-coordinates of the scene.
-- `t::Vector{Float64}`: The time values that correspond to the scene at each
+- `t::Vector{Int64}`: The time values that correspond to the scene at each
   time step.
 
 # Returns

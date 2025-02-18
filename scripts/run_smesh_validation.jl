@@ -14,10 +14,9 @@ P_list = [P1, P2, P3, P4]
 
 burn_scene_obj = burn_scene(P_list, Vector{Float64}(1:length(P_list)))
 
-
 # Plot the burn scene
-plot_scene(burn_scene_obj, 2)
+plot_scene(burn_scene_obj, 3, n_smoke_samples=10)
 
 # Animate the burn scene
-anim = animate_burn_scene(burn_scene_obj)
+anim = animate_burn_scene(burn_scene_obj, n_smoke_samples=100)
 gif(anim, "plots/burn_progression_example.gif", fps = 1)

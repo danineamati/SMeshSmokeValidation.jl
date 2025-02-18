@@ -10,13 +10,14 @@ Given a burn scene and a timestep to plot, we plot the scene at that timestep in
 red, the scenes that have passed in dark gray, and the scenes that have yet to
 come in light gray.
 """
-function plot_scene(burn_scene_obj::burn_scene, t_ind::Int)
+function plot_scene(burn_scene_obj::burn_scene, t_ind::Int;
+                    n_smoke_samples::Int=0)
     # Extract the polygons and time values from the burn_scene object
     burn_polys_t = burn_scene_obj.burn_polys_t
     t = burn_scene_obj.t
 
     # Check that the time index is within the bounds of the time vector
-    if t_ind > length(t) || t_ind < 1
+    if t_ind > (length(t) + 1) || t_ind < 1
         error("Time index out of bounds")
     end
 
@@ -36,6 +37,18 @@ function plot_scene(burn_scene_obj::burn_scene, t_ind::Int)
         end
     end
 
+    if n_smoke_samples > 0 && t_ind > 1
+        # Sample the smoke from the interior of the polygon at time t
+        smoke_samples = sample_smoke_from_scene(burn_scene_obj, n_smoke_samples,
+                                                t_ind)
+        # The samples are an array of 2-element arrays, so we need to extract
+        # the x and y values, which is much easier as a matrix
+        smoke_samples_mat = hcat(smoke_samples...)
+
+        scatter!(smoke_samples_mat[1, :], smoke_samples_mat[2, :],
+                color=:lightgray, linecolor=:black, label="Smoke")
+    end
+
     # Add the axes labels
     xlabel!("Eastings (m)")
     ylabel!("Northings (m)")
@@ -49,13 +62,13 @@ end
 Given a burn scene, we animate the progression of the fire front as it burns
 through the scene using the plot_scene function for each time step.
 """
-function animate_burn_scene(burn_scene_obj::burn_scene)
+function animate_burn_scene(burn_scene_obj::burn_scene; n_smoke_samples::Int=0)
     # Extract the polygons and time values from the burn_scene object
     burn_polys_t = burn_scene_obj.burn_polys_t
 
     # Plot the polygons in order
-    anim = @animate for ind in eachindex(burn_polys_t)
-        plot_scene(burn_scene_obj, ind)
+    anim = @animate for ind in 1:(1 + length(burn_polys_t))
+        plot_scene(burn_scene_obj, ind, n_smoke_samples=n_smoke_samples)
     end
 
     return anim

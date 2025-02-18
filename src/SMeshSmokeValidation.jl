@@ -15,11 +15,14 @@ using Plots
 export 
     burn_scene,
     make_scene_from_csv,
+    sample_smoke_from_poly,
+    sample_smoke_from_scene,
     plot_scene,
     animate_burn_scene
 
 # Included files
 include("make_scene.jl")
 include("plot_scene.jl")
+include("smoke.jl")
 
 end
