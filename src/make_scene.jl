@@ -2,20 +2,56 @@
 # we convert that file to a vertex-based representation of the scene as a 
 # function of time.
 
+using LazySets
+
 """
     burn_scene
 
 A struct that contains the x, y, and t values of the scene.
 
 # Fields
-- `x::Array{Float64, 1}`: The x values of the scene.
-- `y::Array{Float64, 1}`: The y values of the scene.
-- `t::Array{Float64, 1}`: The t values of the scene.
+- `burn_polys_t::Vector{Polygon}`: A vector of polygons that represent the
+  scene at each time step.
+- `t::Vector{Float64}`: A vector of time values that correspond to the scene
+  at each time step.
 """
 struct burn_scene
-    x::Array{Float64, 1}
-    y::Array{Float64, 1}
-    t::Array{Float64, 1}
+    burn_polys_t::Vector{Polygon}
+    t::Vector{Float64}
+end
+
+"""
+    make_burn_polys_from_coords(x::Vector{Float64}, y::Vector{Float64})
+
+Given the x and y coordinates of the scene, we convert the coordinates to a
+vertex-based Polygon representation of the scene using the LazySets package.
+
+# Arguments
+- `x::Vector{Float64}`: The x-coordinates of the scene.
+- `y::Vector{Float64}`: The y-coordinates of the scene.
+- `t::Vector{Float64}`: The time values that correspond to the scene at each
+  time step.
+
+# Returns
+- `burn_polys_t`: A vector of polygons that represent the burn at each time
+  step.
+"""
+function make_burn_polys_from_coords(x, y, t)
+    # Initialize the burn_polys_t vector
+    burn_polys_t = Vector{Polygon}(undef, length(t))
+
+    # Create the polygons
+    for ind in 1:length(t)
+        # Extract the x, y values for the polygon
+        x_i = x[ind]
+        y_i = y[ind]
+        # Create the polygon
+        poly_i = Polygon([x_i, y_i])
+        # Add the polygon to the burn_polys_t vector
+        burn_polys_t[ind] = poly_i
+    end
+
+    return burn_polys_t
 end
 
 
@@ -41,5 +77,7 @@ function make_scene_from_csv(scene_csv_path::String)
     y = df[:, :y]
     t = df[:, :t]
 
-    burn_scene(x, y, t)
+    burn_polys_t = make_scene_polys_from_coords(x, y, t)
+
+    return burn_scene(burn_polys_t, t)
 end
