@@ -23,8 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.11'
-          - '1.10.8' # Long-Term Support Version
+          - '1.11' # Could add '1.10.8' (Long-Term Support Version) in future
           - 'pre'
         os:
           - ubuntu-latest
