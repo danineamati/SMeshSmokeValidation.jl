@@ -20,6 +20,40 @@ struct burn_scene
     t::Vector{Int64}
 end
 
+
+"""
+    parse_coord_str(coord_str::String)
+  
+Given a string that contains the coordinates of a polygon, we parse the string
+and return a vector of the coordinates. We parse the polygon string at the 
+"] [" characters for the coordinate pairs and split the resulting strings at the 
+"," characters to get the x and y values.
+
+Example:
+```julia
+julia> parse_coord_str("[0.0, 0.0] [1.0, 0.0] [1.0, 1.0] [0.0, 1.0]")
+4-element Vector{Vector{Float64}}:
+ [0.0, 0.0]
+ [1.0, 0.0]
+ [1.0, 1.0]
+ [0.0, 1.0]
+```
+
+# Arguments
+- `coord_str::String`: A string that contains the coordinates of a polygon.
+
+# Returns
+- `coords_poly`: A polygon that represents the coordinates of the input string.
+"""
+function parse_coord_str_to_poly(coord_str::String)
+    return Polygon([
+        [parse(Float64, sxy) for sxy in split(s, ',')]
+        for s in split(coord_str[2:end-1], "] [")
+    ])
+end
+
+
+
 """
     make_burn_polys_from_coords(x::Vector{Float64}, y::Vector{Float64})
 

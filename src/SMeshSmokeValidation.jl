@@ -6,6 +6,7 @@ module SMeshSmokeValidation
 using LinearAlgebra
 using LazySets
 using Plots
+using Images
 
 # Internal dependencies
 # include("Counted.jl")
@@ -14,6 +15,7 @@ using Plots
 # Exported functions
 export 
     burn_scene,
+    parse_coord_str_to_poly,
     make_scene_from_csv,
     sample_smoke_from_poly,
     sample_smoke_from_scene,
