@@ -8,10 +8,28 @@ using LazySets
 Given a polygon that represents the burnt region, we sample n_samples from the
 interior of the polygon.
 """
-function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int)
+function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
+        k_times::Int=10)
+    # Assert that the polygon is a polygon
+    @assert isa(burnt_poly, Polygon)
+
     # Sample the smoke from the interior of the polygon
-    smoke_samples = sample(burnt_poly, n_samples)
-    return smoke_samples
+    # try k times to sample the smoke, if it fails, return an empty array
+    for k_ind in 1:k_times
+        try
+            smoke_samples = sample(burnt_poly, n_samples)
+            return smoke_samples
+        catch e
+            println("------> Sampling failed at k_ind = ", k_ind)
+
+            if k_ind == k_times
+                println("Error: ", e)
+                println("n_samples: ", n_samples)
+            end
+        end
+    end
+
+    return []    
 end
 
 """
@@ -32,12 +50,15 @@ function sample_smoke_from_scene(burn_scene_obj::burn_scene,
 
     for t_burnt in 1:(t_ind - 1)
         # Sample the smoke from the interior of the polygon at time t_burnt
+        println("Sampling smoke from polygon ", t_burnt)
         push!(smoke_samples, sample_smoke_from_poly(
             burn_scene_obj.burn_polys_t[t_burnt], n_samples))
     end
 
     # stack them all together as one array
     smoke_samples = vcat(smoke_samples...)
+
+    println("Number of smoke samples: ", length(smoke_samples))
 
     return smoke_samples
 end
