@@ -56,7 +56,8 @@ function plot_scene(burn_scene_obj::burn_scene, t_ind::Int;
         # Plot the smoke samples if not empty
         if !isempty(smoke_samples_mat)
             scatter!(smoke_samples_mat[1, :], smoke_samples_mat[2, :],
-                color=:lightgray, linecolor=:black, label="Smoke Point Source")
+                color=:lightgray, linecolor=:black, label="")
+                #, label="Smoke Point Source")
         end
     end
 

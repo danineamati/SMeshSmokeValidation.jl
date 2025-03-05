@@ -1,11 +1,15 @@
 using LazySets
 using Plots
 using Images
+using Random
 
 using SMeshSmokeValidation
 
 # Test that we can call objects from SMeshSmokeValidation
 println("SMeshSmokeValidation loaded successfully")
+
+# Set the RNG seed for reproducibility
+Random.seed!(42)
 
 background_img_path = "data/HenryCoeBackground.png"
 background_img = load(background_img_path)
@@ -32,7 +36,7 @@ burn_scene_henry_coe = burn_scene(burn_polys, 1:length(burn_polys))
 for t_ind in 1:7
     println("Plotting burn scene at t = ", t_ind)
     p = plot_scene(burn_scene_henry_coe, t_ind, 
-        n_smoke_samples=100,
+        n_smoke_samples=10,
         background_image=background_img, 
         background_x=background_img_x_bound,
         background_y=background_img_y_bound)
@@ -45,7 +49,7 @@ end
 println("Animating burn progression")
 
 anim = animate_burn_scene(burn_scene_henry_coe, 
-    n_smoke_samples=100,
+    n_smoke_samples=10,
     background_image=background_img, 
     background_x=background_img_x_bound,
     background_y=background_img_y_bound)
