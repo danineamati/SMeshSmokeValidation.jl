@@ -25,6 +25,7 @@ export
     plot_scene,
     animate_burn_scene,
     plot_single_plume_bounds,
+    plot_multiple_plumes_bounds,
     # Plume Model
     PlumeFromPointSource,
     query_plume_model,

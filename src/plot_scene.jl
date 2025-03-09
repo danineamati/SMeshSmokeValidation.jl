@@ -108,9 +108,10 @@ end
 """
     plot_single_plume_bounds(plume::PlumeFromPointSource, 
                              bounds::Vector{Float64},
-                             wind_vector::Vector{Float64},
+                             wind_vector::Vector{Float64};
                              x_num::Int=101, y_num::Int=103,
-                             cmap=:bilbao)
+                             vmin::Float64=-10.0, vmax::Float64=3.0,
+                             cmap_select=cgrad(:bilbao, rev=true))
 
 Given a plume object, bounds, and wind vector, we plot the plume in global
 coordinates from the Gaussian Plume Model as a density plot over the bounds
@@ -120,9 +121,10 @@ We recommend using relative primes for x_num and y_num to avoid size issues.
 """
 function plot_single_plume_bounds(plume::PlumeFromPointSource, 
                                   bounds::Vector{Float64},
-                                  wind_vector::Vector{Float64},
+                                  wind_vector::Vector{Float64};
                                   x_num::Int=101, y_num::Int=103,
-                                  cmap=:bilbao)
+                                  vmin::Float64=-10.0, vmax::Float64=3.0,
+                                  cmap_select=cgrad(:bilbao, rev=true))
     # Extract the bounds
     x_min, x_max, y_min, y_max = bounds
 
@@ -132,11 +134,6 @@ function plot_single_plume_bounds(plume::PlumeFromPointSource,
     # Create a meshgrid for the bounds
     x = range(x_min, x_max, length=x_num)
     y = range(y_min, y_max, length=y_num)
-    # X = x' .* ones(y_num)
-    # Y = ones(x_num)' .* y
-
-    # println("X shape ", size(X))
-    # println("Y shape ", size(Y))
 
     # Compute the plume density over the meshgrid
     density = zeros(x_num, y_num)
@@ -149,16 +146,66 @@ function plot_single_plume_bounds(plume::PlumeFromPointSource,
     end
 
     # Apply a safe log10 to the density
-    density[density .<= 1e-10] .= 1e-10
+    density[density .<= vmin] .= vmin
     log10_density = log10.(density)
 
     # Plot the density
-    p = heatmap(x, y, log10_density', aspect_ratio=1, color=cgrad(:bilbao, rev=true),
-                xlabel="Eastings (m)", ylabel="Northings (m)")
+    p = heatmap(x, y, log10_density', aspect_ratio=1, color=cmap_select,
+                xlabel="Eastings (m)", ylabel="Northings (m)",
+                clim=(vmin, vmax))
 
-    # Plot the wind vector
-    # quiver!([x_max], [y_max], quiver=(0, 0, wind_vector[1], wind_vector[2]),
-    #         color=:black, label="Wind Vector")
+    return p
+end
+
+
+"""
+    plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource}, 
+                                bounds::Vector{Float64},
+                                wind_vector::Vector{Float64};
+                                x_num::Int=101, y_num::Int=103,
+                                vmin::Float64=-10.0, vmax::Float64=3.0,
+                                cmap_select=cgrad(:bilbao, rev=true))
+
+Given a vector of plume objects, bounds, and wind vector, we plot the plumes in
+global coordinates from the Gaussian Plume Model as a density plot over the
+bounds provided. The densities will stack additively.
+"""
+function plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource}, 
+                                     bounds::Vector{Float64},
+                                     wind_vector::Vector{Float64};
+                                     x_num::Int=101, y_num::Int=103,
+                                     vmin::Float64=-10.0, vmax::Float64=3.0,
+                                     cmap_select=cgrad(:bilbao, rev=true))
+    # Extract the bounds
+    x_min, x_max, y_min, y_max = bounds
+
+    # For now, we use a single height (future is a DEM)
+    height = 0.0
+
+    # Create a meshgrid for the bounds
+    x = range(x_min, x_max, length=x_num)
+    y = range(y_min, y_max, length=y_num)
+
+    # Compute the plume density over the meshgrid
+    density = zeros(x_num, y_num)
+    for plume in plumes
+        for i in 1:x_num
+            for j in 1:y_num
+                density[i, j] += query_plume_model(plume, 
+                                                   [x[i], y[j], height],
+                                                   wind_vector)
+            end
+        end
+    end
+
+    # Apply a safe log10 to the density
+    density[density .<= vmin] .= vmin
+    log10_density = log10.(density)
+
+    # Plot the density
+    p = heatmap(x, y, log10_density', aspect_ratio=1, color=cmap_select,
+                xlabel="Eastings (m)", ylabel="Northings (m)",
+                clim=(vmin, vmax))
 
     return p
 end
