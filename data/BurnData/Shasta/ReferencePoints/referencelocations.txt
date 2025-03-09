@@ -1,0 +1,3 @@
+file_name	feature_index	geometry_type	part_index	coordinates
+Reference.json	0	Point	0	[559413.4209923932, 4572775.4845177615]
+Reference.json	1	Point	0	[563240.7349715637, 4568969.662777167]
