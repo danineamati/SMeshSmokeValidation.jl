@@ -99,3 +99,67 @@ function animate_burn_scene(burn_scene_obj::BurnScene;
 
     return anim
 end
+
+
+###############################################
+# Plot the smoke plume in global coordinates
+###############################################
+
+"""
+    plot_single_plume_bounds(plume::PlumeFromPointSource, 
+                             bounds::Vector{Float64},
+                             wind_vector::Vector{Float64},
+                             x_num::Int=101, y_num::Int=103,
+                             cmap=:bilbao)
+
+Given a plume object, bounds, and wind vector, we plot the plume in global
+coordinates from the Gaussian Plume Model as a density plot over the bounds
+provided.
+
+We recommend using relative primes for x_num and y_num to avoid size issues.
+"""
+function plot_single_plume_bounds(plume::PlumeFromPointSource, 
+                                  bounds::Vector{Float64},
+                                  wind_vector::Vector{Float64},
+                                  x_num::Int=101, y_num::Int=103,
+                                  cmap=:bilbao)
+    # Extract the bounds
+    x_min, x_max, y_min, y_max = bounds
+
+    # For now, we use a single height (future is a DEM)
+    height = 0.0
+
+    # Create a meshgrid for the bounds
+    x = range(x_min, x_max, length=x_num)
+    y = range(y_min, y_max, length=y_num)
+    # X = x' .* ones(y_num)
+    # Y = ones(x_num)' .* y
+
+    # println("X shape ", size(X))
+    # println("Y shape ", size(Y))
+
+    # Compute the plume density over the meshgrid
+    density = zeros(x_num, y_num)
+    for i in 1:x_num
+        for j in 1:y_num
+            density[i, j] = query_plume_model(plume, 
+                                              [x[i], y[j], height],
+                                              wind_vector)
+        end
+    end
+
+    # Apply a safe log10 to the density
+    density[density .<= 1e-10] .= 1e-10
+    log10_density = log10.(density)
+
+    # Plot the density
+    p = heatmap(x, y, log10_density', aspect_ratio=1, color=cgrad(:bilbao, rev=true),
+                xlabel="Eastings (m)", ylabel="Northings (m)")
+
+    # Plot the wind vector
+    # quiver!([x_max], [y_max], quiver=(0, 0, wind_vector[1], wind_vector[2]),
+    #         color=:black, label="Wind Vector")
+
+    return p
+end
+

@@ -54,7 +54,7 @@ The parameters iyz, jyz, and kyz are the coefficients of the polynomial that
 come from the air column stability class.
 """
 function σChange(x_local::Float64, iyz::Float64, jyz::Float64, kyz::Float64)
-    return exp(iyz + jyz * x_local + kyz * x_local^2)
+    return exp(iyz + jyz * log(x_local) + kyz * log(x_local)^2)
 end
 
 
@@ -93,13 +93,22 @@ z_local) in the smoke plume.
 """
 function plume_model_point_estimate(
     x_local::Float64, y_local::Float64, z_local::Float64, 
-    Q::Float64, u_wind_local::Float64,
-    σ_y::Function, σ_z::Function)\
+    Q::Float64, u_wind_local::Float64, h_local::Float64,
+    σ_y::Function, σ_z::Function)
+
+    # if the query is upwind of the source, return 0
+    if x_local < 0
+        return 0
+    end
 
     cross_wind_curr = cross_wind_dispersion(x_local, y_local, σ_y)
     along_wind_curr = along_wind_dispersion(x_local, z_local, σ_z, h_local)
 
-    return (Q / u_wind_local) * cross_wind_curr * along_wind_curr
+    point_estimate = (Q / u_wind_local) * cross_wind_curr * along_wind_curr
+
+    # println("Point estimate: ", point_estimate)
+
+    return point_estimate
 end
 
 
@@ -209,7 +218,7 @@ function query_plume_model(plume_model::PlumeFromPointSource,
     xyz_local = global_to_local_coords(plume_model, xyz_global, wind_global)
 
     # Get the point estimate
-    return plume_model_point_estimate(xyz_local..., plume_model.Q, 
-                                      norm(wind_global), 
-                                      plume_model.σ_y, plume_model.σ_z)
+    return plume_model_point_estimate(xyz_local..., 
+                    plume_model.Q, norm(wind_global), plume_model.h,
+                    plume_model.σ_y, plume_model.σ_z)
 end

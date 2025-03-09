@@ -13,7 +13,7 @@ using Images
 # include("Counted.jl")
 # using .Counted
 
-println("Loading SMeshSmokeValidation...")
+println("Setting exports")
 
 # Exported functions
 export 
@@ -24,6 +24,7 @@ export
     # Plot Scene
     plot_scene,
     animate_burn_scene,
+    plot_single_plume_bounds,
     # Plume Model
     PlumeFromPointSource,
     query_plume_model,
@@ -31,10 +32,11 @@ export
     sample_smoke_from_poly,
     sample_smoke_from_scene
 
-# Included files
+println("Loading SMeshSmokeValidation...")
+# Included files (order needs to match dependencies)
 include("make_scene.jl")
-include("plot_scene.jl")
 include("plume_model.jl")
 include("smoke_points.jl")
+include("plot_scene.jl")
 
 end
