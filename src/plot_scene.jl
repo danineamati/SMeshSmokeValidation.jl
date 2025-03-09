@@ -4,13 +4,13 @@
 using Plots
 
 """
-    plot_scene(burn_scene_obj::burn_scene, t_ind::Int)
+    plot_scene(burn_scene_obj::BurnScene, t_ind::Int)
 
 Given a burn scene and a timestep to plot, we plot the scene at that timestep in
 red, the scenes that have passed in dark gray, and the scenes that have yet to
 come in light gray.
 """
-function plot_scene(burn_scene_obj::burn_scene, t_ind::Int;
+function plot_scene(burn_scene_obj::BurnScene, t_ind::Int;
                     n_smoke_samples::Int=0, 
                     background_image=nothing, 
                     background_x=nothing, background_y=nothing)
@@ -71,12 +71,12 @@ end
 
 
 """
-    animate_burn_scene(burn_scene_obj::burn_scene)
+    animate_burn_scene(burn_scene_obj::BurnScene)
 
 Given a burn scene, we animate the progression of the fire front as it burns
 through the scene using the plot_scene function for each time step.
 """
-function animate_burn_scene(burn_scene_obj::burn_scene;
+function animate_burn_scene(burn_scene_obj::BurnScene;
     n_smoke_samples::Int=0, 
     background_image=nothing, 
     background_x=nothing, background_y=nothing)

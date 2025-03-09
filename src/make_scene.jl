@@ -5,7 +5,7 @@
 using LazySets
 
 """
-    burn_scene
+    BurnScene
 
 A struct that contains the x, y, and t values of the scene.
 
@@ -15,7 +15,7 @@ A struct that contains the x, y, and t values of the scene.
 - `t::Vector{Int64}`: A vector of time values that correspond to the scene
   at each time step.
 """
-struct burn_scene
+struct BurnScene
     burn_polys_t::Vector{Polygon}
     t::Vector{Int64}
 end
