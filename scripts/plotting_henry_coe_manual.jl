@@ -11,7 +11,14 @@ println("SMeshSmokeValidation loaded successfully")
 # Set the RNG seed for reproducibility
 Random.seed!(42)
 
-background_img_path = "data/HenryCoeBackground.png"
+# Save directory for the plots
+save_dir = "plots/henry_coe_manual"
+if !isdir(save_dir)
+    mkdir(save_dir)
+end
+
+
+background_img_path = "data/StatusUpdateData/HenryCoeBackground.png"
 background_img = load(background_img_path)
 background_img_x_bound = [ 628320,  629660] # Manually estimated
 background_img_y_bound = [4116580, 4117420] # Manually estimated
@@ -42,7 +49,7 @@ for t_ind in 1:7
         background_y=background_img_y_bound)
     
     # Save the plot to file 
-    savefig(p, "plots/henry_coe/burn_scene_henry_coe_t$(t_ind).png")
+    savefig(p, save_dir * "/burn_scene_henry_coe_t$(t_ind).png")
 
 end
 
@@ -53,4 +60,4 @@ anim = animate_burn_scene(burn_scene_henry_coe,
     background_image=background_img, 
     background_x=background_img_x_bound,
     background_y=background_img_y_bound)
-gif(anim, "plots/henry_coe/burn_progression_henry_coe.gif", fps = 1)
+gif(anim, save_dir * "/burn_progression_henry_coe.gif", fps = 1)
