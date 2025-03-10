@@ -187,16 +187,22 @@ function plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource},
     y = range(y_min, y_max, length=y_num)
 
     # Compute the plume density over the meshgrid
-    density = zeros(x_num, y_num)
-    for plume in plumes
-        for i in 1:x_num
-            for j in 1:y_num
-                density[i, j] += query_plume_model(plume, 
-                                                   [x[i], y[j], height],
-                                                   wind_vector)
-            end
+    all_query_points = Vector{Float64}[]
+    for i in 1:x_num
+        for j in 1:y_num
+            push!(all_query_points, [x[i], y[j], height])
         end
     end
+
+    println("all_query_points size: ", size(all_query_points))
+    println("type of all_query_points: ", typeof(all_query_points))
+
+
+    density = query_multiple_plumes_points(plumes, all_query_points, wind_vector)
+
+    # Reshape the density to the meshgrid
+    # Probably, there is a nice way to do this without transposing
+    density = reshape(density, y_num, x_num)'
 
     # Apply a safe log10 to the density
     density[density .<= vmin] .= vmin

@@ -222,3 +222,42 @@ function query_plume_model(plume_model::PlumeFromPointSource,
                     plume_model.Q, norm(wind_global), plume_model.h,
                     plume_model.σ_y, plume_model.σ_z)
 end
+
+
+
+#############################
+# Querying multiple plumes
+#############################
+
+
+"""
+    query_multiple_plumes_points(
+            plumes::Vector{PlumeFromPointSource}, 
+            xyz_global_points::Vector{Vector{Float64}}, 
+            wind_global::Vector{Float64})
+
+Query the Gaussian plume model at multiple points in global coordinates knowing 
+the wind in global coordinates.
+
+The code is not particularly vectorized, so it is relying on Julia's JIT for
+performance.
+"""
+function query_multiple_plumes_points(
+        plumes::Vector{PlumeFromPointSource}, 
+        xyz_global_points::Vector{Vector{Float64}}, 
+        wind_global::Vector{Float64})
+    
+    # Initialize the density
+    density_vec = zeros(length(xyz_global_points))
+
+    # Query the plume model at each point
+    for (pt_ind, xyz_global) in enumerate(xyz_global_points)
+        for plume in plumes
+            density_vec[pt_ind] += query_plume_model(
+                plume, xyz_global, wind_global)
+        end
+    end
+
+    return density_vec
+end
+

@@ -29,6 +29,7 @@ export
     # Plume Model
     PlumeFromPointSource,
     query_plume_model,
+    query_multiple_plumes_points,
     # Smoke Points
     sample_smoke_from_poly,
     sample_smoke_from_scene
