@@ -38,7 +38,7 @@ burn_polys = [
     for s in burn_poly_strs
 ]
 
-burn_scene_henry_coe = burn_scene(burn_polys, 1:length(burn_polys))
+burn_scene_henry_coe = BurnScene(burn_polys, 1:length(burn_polys))
 
 for t_ind in 1:7
     println("Plotting burn scene at t = ", t_ind)

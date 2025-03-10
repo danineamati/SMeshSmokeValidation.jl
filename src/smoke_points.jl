@@ -33,13 +33,13 @@ function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
 end
 
 """
-    sample_smoke_from_scene(burn_scene_obj::burn_scene, 
+    sample_smoke_from_scene(burn_scene_obj::BurnScene, 
                             n_samples::Int, t_ind::Float64)
 
 Given a burn_scene object, we sample the smoke from the interior of the burnt
 region at time t.
 """
-function sample_smoke_from_scene(burn_scene_obj::burn_scene, 
+function sample_smoke_from_scene(burn_scene_obj::BurnScene, 
                                  n_samples::Int, t_ind::Int64)
     # If there is no smoke to sample, return an empty array
     if t_ind <= 1
