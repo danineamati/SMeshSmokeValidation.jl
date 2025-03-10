@@ -8,12 +8,14 @@ Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 
 [compat]
 Images = "0.26.1"
 LazySets = "3.1.0"
 LinearAlgebra = "1.11.0"
 Plots = "1.40.9"
+TiffImages = "0.10.2"
 julia = "1.6.7"
 
 [extras]
