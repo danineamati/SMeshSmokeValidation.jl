@@ -194,9 +194,8 @@ function plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource},
         end
     end
 
-    println("all_query_points size: ", size(all_query_points))
-    println("type of all_query_points: ", typeof(all_query_points))
-
+    # println("all_query_points size: ", size(all_query_points))
+    # println("type of all_query_points: ", typeof(all_query_points))
 
     density = query_multiple_plumes_points(plumes, all_query_points, wind_vector)
 
@@ -211,7 +210,7 @@ function plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource},
     # Plot the density
     p = heatmap(x, y, log10_density', aspect_ratio=1, color=cmap_select,
                 xlabel="Eastings (m)", ylabel="Northings (m)",
-                clim=(vmin, vmax))
+                clim=(vmin, vmax), framestyle = :box)
 
     return p
 end
