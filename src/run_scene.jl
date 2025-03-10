@@ -1,5 +1,12 @@
 # Run the scene of the burn
 
+using SMeshSmokeValidation
+
+###########################################
+# Functions to move to library later
+###########################################
+
+
 function gen_smoke_samples_over_time(burn_scene_obj::BurnScene;
     n_smoke_samples::Int=10)
     # Extract the polygons and time values from the burn_scene object
@@ -12,6 +19,7 @@ function gen_smoke_samples_over_time(burn_scene_obj::BurnScene;
         smoke_samples_mat = hcat(smoke_samples...)
         push!(smoke_samples_per_time, smoke_samples_mat)
     end
+    return smoke_samples_per_time
 end
 
 
@@ -49,4 +57,11 @@ function gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_ve
     return sensor_readings_per_time
     
 end
+
+
+###########################################
+# Script
+###########################################
+
+using Random
 

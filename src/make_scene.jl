@@ -22,6 +22,8 @@ end
 
 
 """
+[DEPRECATED]
+
     parse_coord_str(coord_str::String)
   
 Given a string that contains the coordinates of a polygon, we parse the string
@@ -55,6 +57,8 @@ end
 
 
 """
+[DEPRECATED]
+
     make_burn_polys_from_coords(x::Vector{Float64}, y::Vector{Float64})
 
 Given the x and y coordinates of the scene, we convert the coordinates to a
