@@ -8,7 +8,7 @@ using SMeshSmokeValidation
 # Set the RNG seed for reproducibility
 Random.seed!(42)
 
-dataset = "HenryCoe"
+dataset = "Malibu"
 
 # Save directory for the plots
 save_dir = "plots/" * dataset * "/changing_wind"
