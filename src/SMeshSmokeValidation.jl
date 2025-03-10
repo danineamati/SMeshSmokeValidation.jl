@@ -20,7 +20,8 @@ export
     # Make Scene
     BurnScene,
     parse_coord_str_to_poly,
-    make_scene_from_csv,
+    # make_scene_from_csv, # Depracated
+    load_burn_area_file,
     # Plot Scene
     plot_scene,
     animate_burn_scene,
