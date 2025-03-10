@@ -205,7 +205,7 @@ function plot_multiple_plumes_bounds(plumes::Vector{PlumeFromPointSource},
     density = reshape(density, y_num, x_num)'
 
     # Apply a safe log10 to the density
-    density[density .<= vmin] .= vmin
+    density[density .<= 10^vmin] .= 10^vmin
     log10_density = log10.(density)
 
     # Plot the density
