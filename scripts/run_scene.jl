@@ -112,7 +112,7 @@ smoke_samples_per_time = gen_smoke_samples_over_time(burn_scene_obj,
         n_smoke_samples=n_smoke_samples)
 
 # Generate the plumes
-Q = 0.1
+Q = 1.0
 h_plume = 10.0
 air_class = "D"
 plumes_per_time = gen_plumes_over_time(smoke_samples_per_time, 
@@ -142,7 +142,7 @@ sensor_readings_per_time_log = [log10.(sensor_readings_at_time)
 
 for t in 1:(length(burn_scene_obj.t) + 1)
 
-    p = plot()
+    p = plot(framestyle = :box)
 
     if length(smoke_samples_per_time[t]) > 0
         for source_location in eachcol(smoke_samples_per_time[t])
@@ -181,7 +181,41 @@ for t in 1:(length(burn_scene_obj.t) + 1)
     xlims!(burn_scene_obj.reference_bounds_x...)
     ylims!(burn_scene_obj.reference_bounds_y...)
 
+    savefig(p, joinpath(save_dir, "example_readings_$(wind_dir)_$(t).png"))
+end
+
+# Repeat, but now plot the plumes
+println("Plotting plumes...")
+
+bounds = vcat(burn_scene_obj.reference_bounds_x..., burn_scene_obj.reference_bounds_y...)
+
+for t in 1:(length(burn_scene_obj.t) + 1)
+
+    p = plot_multiple_plumes_bounds(plumes_per_time[t], bounds, wind_vec, 
+        x_num=101, y_num=103, vmax=vmax)
+
+    if length(smoke_samples_per_time[t]) > 0
+        for source_location in eachcol(smoke_samples_per_time[t])
+            # Cast to a 1D array
+            source_location = source_location[:]
+
+            # Add a scatter for the source location
+            scatter!([source_location[1]], [source_location[2]], 
+                    color="gray", label="")
+
+            # Add a quiver for the wind direction
+            quiver!([source_location[1]], [source_location[2]], 
+                    quiver=([wind_len_mult * wind_vec[1]], [wind_len_mult * wind_vec[2]]),
+                    color="black", lw=2, label="")        
+        end
+    end
+
+    # Enforce the plot area bounds
+    xlims!(burn_scene_obj.reference_bounds_x...)
+    ylims!(burn_scene_obj.reference_bounds_y...)
+
     savefig(p, joinpath(save_dir, "example_plume_multiple_$(wind_dir)_$(t).png"))
+    
 end
 
 println("Done!")
