@@ -144,6 +144,19 @@ for t in 1:(length(burn_scene_obj.t) + 1)
 
     p = plot(framestyle = :box)
 
+    # Plot the polygons in order
+    for ind in eachindex(burn_scene_obj.burn_polys_t)
+        if ind < t
+            plot!(burn_scene_obj.burn_polys_t[ind], color=:black, alpha=0.5, label="",
+                    linealpha=0.0)
+        elseif ind == t
+            plot!(burn_scene_obj.burn_polys_t[ind], color=:red, label="")
+        else
+            plot!(burn_scene_obj.burn_polys_t[ind], color=:lightgray, alpha=0.5, label="",
+                    linealpha=0.0)
+        end
+    end
+
     if length(smoke_samples_per_time[t]) > 0
         for source_location in eachcol(smoke_samples_per_time[t])
             # Cast to a 1D array
