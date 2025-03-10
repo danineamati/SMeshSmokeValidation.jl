@@ -59,9 +59,9 @@ function gen_plumes_over_time(smoke_samples_per_time, Q, h_plume, air_class)
 end
 
 
-function gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_vec)
+function gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_vecs)
     sensor_readings_per_time = []
-    for plumes_at_curr_time in plumes_per_time
+    for (t_ind, plumes_at_curr_time) in enumerate(plumes_per_time)
         # If there are no plumes, then there are no sensor readings
         if isempty(plumes_at_curr_time)
             push!(sensor_readings_per_time, [])
@@ -69,7 +69,7 @@ function gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_ve
         end
 
         sensor_readings = query_multiple_plumes_points(
-            plumes_at_curr_time, sensor_locations, wind_vec)
+            plumes_at_curr_time, sensor_locations, wind_vecs[t_ind])
 
         push!(sensor_readings_per_time, sensor_readings)
 
@@ -93,7 +93,7 @@ Random.seed!(42)
 dataset = "HenryCoe"
 
 # Save directory for the plots
-save_dir = "plots/" * dataset * "/test_snode_samples"
+save_dir = "plots/" * dataset * "/changing_wind"
 if !isdir(save_dir)
     mkdir(save_dir)
 end
@@ -120,8 +120,10 @@ plumes_per_time = gen_plumes_over_time(smoke_samples_per_time,
 
 # Get the sensor readings
 wind_speed = 10.0
-wind_dir = 30.0
-wind_vec = wind_speed * [cosd(wind_dir), sind(wind_dir), 0.0]
+wind_dirs = [30.0, 35.0, 40.0, 35.0, -30.0, -25.0, -20.0]
+to_wind_vec(wdir) = wind_speed .* [cosd(wdir), sind(wdir), 0.0]
+wind_vecs = to_wind_vec.(wind_dirs)
+
 wind_len_mult = 3.0
 
 vmin = -10.0
@@ -135,7 +137,7 @@ end
 
 
 sensor_readings_per_time = gen_sensor_readings_of_plume(plumes_per_time, 
-    burn_scene_obj.snode_locations, wind_vec)
+    burn_scene_obj.snode_locations, wind_vecs)
 
 sensor_readings_per_time_log = [log10.(sensor_readings_at_time)
     for sensor_readings_at_time in sensor_readings_per_time]
@@ -143,6 +145,7 @@ sensor_readings_per_time_log = [log10.(sensor_readings_at_time)
 for t in 1:(length(burn_scene_obj.t) + 1)
 
     p = plot(framestyle = :box)
+    curr_wind = wind_vecs[t]
 
     # Plot the polygons in order
     for ind in eachindex(burn_scene_obj.burn_polys_t)
@@ -168,7 +171,7 @@ for t in 1:(length(burn_scene_obj.t) + 1)
 
             # Add a quiver for the wind direction
             quiver!([source_location[1]], [source_location[2]], 
-                    quiver=([wind_len_mult * wind_vec[1]], [wind_len_mult * wind_vec[2]]),
+                    quiver=([wind_len_mult * curr_wind[1]], [wind_len_mult * curr_wind[2]]),
                     color="black", lw=2, label="")        
         end
     end
@@ -194,7 +197,8 @@ for t in 1:(length(burn_scene_obj.t) + 1)
     xlims!(burn_scene_obj.reference_bounds_x...)
     ylims!(burn_scene_obj.reference_bounds_y...)
 
-    savefig(p, joinpath(save_dir, "example_readings_$(wind_dir)_$(t).png"))
+    curr_wind_dir = Int(wind_dirs[t])
+    savefig(p, joinpath(save_dir, "example_readings_$(t)_$(curr_wind_dir).png"))
 end
 
 # Repeat, but now plot the plumes
@@ -204,7 +208,9 @@ bounds = vcat(burn_scene_obj.reference_bounds_x..., burn_scene_obj.reference_bou
 
 for t in 1:(length(burn_scene_obj.t) + 1)
 
-    p = plot_multiple_plumes_bounds(plumes_per_time[t], bounds, wind_vec, 
+    curr_wind = wind_vecs[t]
+
+    p = plot_multiple_plumes_bounds(plumes_per_time[t], bounds, curr_wind, 
         x_num=101, y_num=103, vmax=vmax)
 
     if length(smoke_samples_per_time[t]) > 0
@@ -218,7 +224,7 @@ for t in 1:(length(burn_scene_obj.t) + 1)
 
             # Add a quiver for the wind direction
             quiver!([source_location[1]], [source_location[2]], 
-                    quiver=([wind_len_mult * wind_vec[1]], [wind_len_mult * wind_vec[2]]),
+                    quiver=([wind_len_mult * curr_wind[1]], [wind_len_mult * curr_wind[2]]),
                     color="black", lw=2, label="")        
         end
     end
@@ -227,7 +233,8 @@ for t in 1:(length(burn_scene_obj.t) + 1)
     xlims!(burn_scene_obj.reference_bounds_x...)
     ylims!(burn_scene_obj.reference_bounds_y...)
 
-    savefig(p, joinpath(save_dir, "example_plume_multiple_$(wind_dir)_$(t).png"))
+    curr_wind_dir = Int(wind_dirs[t])
+    savefig(p, joinpath(save_dir, "example_plume_multiple_$(t)_$(curr_wind_dir).png"))
     
 end
 

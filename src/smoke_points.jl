@@ -58,7 +58,8 @@ function sample_smoke_from_scene(burn_scene_obj::BurnScene,
     # stack them all together as one array
     smoke_samples = vcat(smoke_samples...)
 
-    println("Number of smoke samples: ", length(smoke_samples))
+    println("Number of smoke samples: ", length(smoke_samples), 
+                " of ", (t_ind - 1) *n_samples)
 
     return smoke_samples
 end
