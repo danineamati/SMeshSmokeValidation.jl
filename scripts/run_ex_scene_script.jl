@@ -38,7 +38,7 @@ plumes_per_time = gen_plumes_over_time(smoke_samples_per_time,
 
 # Get the sensor readings
 wind_speed = 10.0
-wind_dirs = [30.0, 35.0, 40.0, 35.0, -30.0, -25.0, -20.0]
+wind_dirs = [30.0, 35.0, 40.0, 35.0, -30.0, -25.0, -20.0, 35.0, 30.0]
 to_wind_vec(wdir) = wind_speed .* [cosd(wdir), sind(wdir), 0.0]
 wind_vecs = to_wind_vec.(wind_dirs)
 

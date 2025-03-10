@@ -79,13 +79,17 @@ println("Number of snode locations: ", length(burn_scene_obj.snode_locations))
 println("Reference Bounds in x: ", burn_scene_obj.reference_bounds_x)
 println("Reference Bounds in y: ", burn_scene_obj.reference_bounds_y)
 
-for t_ind in burn_scene_obj.t
+num_steps = length(burn_scene_obj.t) + 1
+
+for t_ind in 1:num_steps
     # println("Plotting burn scene at t = ", t_ind)
     p = plot_scene(burn_scene_obj, t_ind, 
         n_smoke_samples=10)
     
     # Save the plot to file 
-    savefig(p, save_dir * "/burn_scene_henry_coe_t$(t_ind).png")
+    savefig(p, save_dir * "/burn_scene_$(dataset)_t$(t_ind).png")
 
 end
 
+
+println("Done!")
