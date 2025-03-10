@@ -66,38 +66,11 @@ savefig(p_back, save_dir * "/background_image_test.png")
 # println("Background image bounds: ", background_img_x_bound, background_img_y_bound)
 
 # Parse the burn areas
-
 burnareas_filename = "data\\BurnData\\" * dataset * "\\BurnAreas\\" * dataset * "BurnAreas.txt"
-
-lines = readlines(burnareas_filename)
-
-# Get the JSON name (first text before the spaces)
-json_name = split(lines[end])[1]
-
-burn_area_nums = [parse(Int, filter(isdigit, collect(split(l)[1]))[1]) for l in lines[3:end]]
-# println("Area numbers: ", burn_area_nums)
-num_steps = length(burn_area_nums)
+burn_scene_obj = load_burn_area_file(burnareas_filename)
 
 
-# Get the coordinates
-polys_per_line = Polygon[]
-for line in lines[3:end]
-    matches = collect(eachmatch(COORD_REGEX, line))
-    coords = [collect(parse_coord(m.captures[1])) for m in matches]
-    poly = Polygon(coords)
-    push!(polys_per_line, poly)
-end
-
-# Reorder with the area numbers
-# println("Burn Area numbers: ", burn_area_nums)
-polys_per_line = [polys_per_line[i] for i in burn_area_nums]
-
-
-# Convert to a BurnScene object
-burn_scene_obj = BurnScene(polys_per_line, 1:num_steps)
-
-
-for t_ind in 1:(num_steps+1)
+for t_ind in burn_scene_obj.t
     # println("Plotting burn scene at t = ", t_ind)
     p = plot_scene(burn_scene_obj, t_ind, 
         n_smoke_samples=10)
