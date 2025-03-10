@@ -50,7 +50,7 @@ function sample_smoke_from_scene(burn_scene_obj::BurnScene,
 
     for t_burnt in 1:(t_ind - 1)
         # Sample the smoke from the interior of the polygon at time t_burnt
-        println("Sampling smoke from polygon ", t_burnt)
+        # println("Sampling smoke from polygon ", t_burnt)
         push!(smoke_samples, sample_smoke_from_poly(
             burn_scene_obj.burn_polys_t[t_burnt], n_samples))
     end

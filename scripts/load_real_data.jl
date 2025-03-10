@@ -45,8 +45,8 @@ println(background_img[end:-1:1, :][10, 3])
 
 # error("Stop here")
 
-references = "data\\BurnData\\" * dataset * "\\ReferencePoints\\referencelocations.txt"
-references_lines = readlines(references)
+reference_bounds_filename = "data\\BurnData\\" * dataset * "\\ReferencePoints\\referencelocations.txt"
+references_lines = readlines(reference_bounds_filename)
 
 ref_points = Vector{Float64}[]
 for ref_line in references_lines[2:end]
@@ -67,8 +67,17 @@ savefig(p_back, save_dir * "/background_image_test.png")
 
 # Parse the burn areas
 burnareas_filename = "data\\BurnData\\" * dataset * "\\BurnAreas\\" * dataset * "BurnAreas.txt"
-burn_scene_obj = load_burn_area_file(burnareas_filename)
+snode_locations_filename = "data\\BurnData\\" * dataset * "\\SNodeLocations\\snodelocations.txt"
 
+burn_scene_obj = load_burn_scene_from_files(
+    burnareas_filename, snode_locations_filename, reference_bounds_filename)
+
+println("Burn Scene Specifications:")
+println("Number of burn polygons: ", length(burn_scene_obj.burn_polys_t))
+println("Number of time steps: ", length(burn_scene_obj.t))
+println("Number of snode locations: ", length(burn_scene_obj.snode_locations))
+println("Reference Bounds in x: ", burn_scene_obj.reference_bounds_x)
+println("Reference Bounds in y: ", burn_scene_obj.reference_bounds_y)
 
 for t_ind in burn_scene_obj.t
     # println("Plotting burn scene at t = ", t_ind)

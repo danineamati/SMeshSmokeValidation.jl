@@ -13,7 +13,7 @@ using Images
 # include("Counted.jl")
 # using .Counted
 
-println("Setting exports")
+println("Setting Exports")
 
 # Exported functions
 export 
@@ -21,7 +21,8 @@ export
     BurnScene,
     parse_coord_str_to_poly,
     # make_scene_from_csv, # Depracated
-    load_burn_area_file,
+    # load_burn_area_file, # Depracated
+    load_burn_scene_from_files,
     # Plot Scene
     plot_scene,
     animate_burn_scene,
