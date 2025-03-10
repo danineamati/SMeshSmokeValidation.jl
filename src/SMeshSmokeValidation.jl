@@ -23,24 +23,29 @@ export
     # make_scene_from_csv, # Depracated
     # load_burn_area_file, # Depracated
     load_burn_scene_from_files,
-    # Plot Scene
-    plot_scene,
-    animate_burn_scene,
-    plot_single_plume_bounds,
-    plot_multiple_plumes_bounds,
     # Plume Model
     PlumeFromPointSource,
     query_plume_model,
     query_multiple_plumes_points,
     # Smoke Points
     sample_smoke_from_poly,
-    sample_smoke_from_scene
+    sample_smoke_from_scene,
+    # Run Scene
+    gen_smoke_samples_over_time,
+    gen_plumes_over_time,
+    gen_sensor_readings_of_plume,
+    # Plot Scene
+    plot_scene,
+    animate_burn_scene,
+    plot_single_plume_bounds,
+    plot_multiple_plumes_bounds
 
 println("Loading SMeshSmokeValidation...")
 # Included files (order needs to match dependencies)
 include("make_scene.jl")
 include("plume_model.jl")
 include("smoke_points.jl")
+include("run_scene.jl")
 include("plot_scene.jl")
 
 end
