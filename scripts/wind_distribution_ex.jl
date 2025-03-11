@@ -12,7 +12,7 @@ include("../src/wind_distribution.jl")
 Random.seed!(42)
 
 # save_dir = "plots/wind_distribution_testing"
-save_dir = "plots/wind_examples/Malibu_fuzzed"
+save_dir = "plots/wind_examples/Malibu_nominal"
 if !isdir(save_dir)
     mkpath(save_dir)
 end
@@ -33,7 +33,7 @@ malibu_nominal_wind_dist = WindDistribution(
       150.0], # Along the slopes
     [9.0, 5.0, 5.0], 
     [0.1, 0.7, 0.2], 
-    5.0, 1.0;
+    10.0, 5.0;
     in_deg=true
 )
 
@@ -42,7 +42,7 @@ malibu_fuzzed_wind_dist = WindDistribution(
     [-120.0, # Towards the ocean following a Santa Ana event 
        90.0, # From the ocean
       150.0], # Along the slopes
-    [100.0, 5.0, 5.0], 
+    [50.0, 5.0, 5.0], 
     [0.7, 0.25, 0.05], 
     15.0, 1.0;
     in_deg=true
@@ -79,7 +79,8 @@ query_angles = collect(-π:0.01:π)
 
 for plot_type in plot_types
     for yscale in plot_yscales
-        polar_plot = plot(legend=false, framestyle = :box, proj = plot_type, yscale=yscale)
+        polar_plot = plot(legend=false, framestyle = :box, dpi = 300,
+                        proj = plot_type, yscale=yscale)
 
         # Plot the likelihood of the wind direction
         for component in wind_dist.wind_dir_dists.components
@@ -107,7 +108,8 @@ end
 log_min = Inf
 
 for plot_type in plot_types
-    polar_plot_log = plot(legend=false, framestyle = :box, proj = plot_type)
+    polar_plot_log = plot(legend=false, framestyle = :box, dpi = 300, 
+                            proj = plot_type)
 
     # Offset the log likelihood to avoid negative values
     if plot_type == :cartesian
@@ -142,7 +144,7 @@ wind_dir_traj, wind_speed_traj = sample_wind_dir_speed_trajectory(
     wind_dist, n_samples)
 
 # Plot the wind vectors
-p = plot(framestyle = :box, proj = :polar)
+p = plot(framestyle = :box, proj = :polar, dpi = 300)
 
 for (wd, ws) in zip(wind_dir_traj, wind_speed_traj)
     # quiver!([0.0], [0.0], quiver=([wind_vec[1]], [wind_vec[2]]), 
@@ -173,10 +175,11 @@ bin_edges = range(lowest_loglikelihood, stop=highest_loglikelihood, length=n_bin
 
 sampled_label = occursin("fuzzed", lowercase(save_dir)) ? "Fuzzed" : "Sampled"
 
-h = histogram(loglikelihoods_from_sampled, label=sampled_label, 
+h = histogram(loglikelihoods_from_nominal, label="Nominal",
     alpha=0.5, bins=bin_edges, normalize=:pdf, 
-    xlabel="Wind Vector Log Likelihood", ylabel="Estimated PDF", framestyle = :box)
-histogram!(loglikelihoods_from_nominal, label="Nominal", 
+    xlabel="Wind Vector Log Likelihood", ylabel="Estimated PDF", 
+    framestyle = :box, dpi = 300)
+histogram!(loglikelihoods_from_sampled, label=sampled_label, 
     alpha=0.5, bins=bin_edges, normalize=:pdf)
 
 savefig(h, joinpath(save_dir, "wind_loglikelihood_histogram.png"))
