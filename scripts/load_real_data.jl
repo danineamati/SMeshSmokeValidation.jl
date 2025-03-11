@@ -4,11 +4,15 @@ using FileIO
 using Random
 using SMeshSmokeValidation
 using Colors
+using CSV, DataFrames
 
 include("sample_perimeter.jl")
 Random.seed!(42)
 
-dataset = "Malibu"
+# Model Input Paramters
+dataset = "HenryCoe"      # Desired burn (e.g., "HenryCoe", "Shasta", "Malibu")
+simulation = 1            # 1-3
+moisture_level = "moist"  # "moderate", "moist", "wet"
 
 # Save directory for the plots
 save_dir = joinpath("plots", dataset)
@@ -31,7 +35,7 @@ references_lines = readlines(reference_bounds_filename)
 
 # burnareas_filename
 burnareas_filename = joinpath("data", "BurnData", dataset, "BurnAreas", "$(dataset)BurnAreas.txt")
-snode_locations_filename = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations.txt")
+snode_locations_filename = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations_sim$(simulation).txt")
 
 burn_scene_obj = load_burn_scene_from_files(
     burnareas_filename, snode_locations_filename, reference_bounds_filename)
@@ -42,6 +46,17 @@ println("Number of time steps: ", length(burn_scene_obj.t))
 println("Number of snode locations: ", length(burn_scene_obj.snode_locations))
 println("Reference Bounds in x: ", burn_scene_obj.reference_bounds_x)
 println("Reference Bounds in y: ", burn_scene_obj.reference_bounds_y)
+
+# Q values for the burn scene:
+Acreage_Consumption = joinpath("data", "FuelConsumptionProfiles", "$(dataset)_Scenarios.csv")
+df = CSV.read(Acreage_Consumption, DataFrame)
+
+# Draw key environmental values
+consumed_total = parse(Float64, df[11, Symbol(moisture_level)])  
+
+duration = 3600*24                # seconds of one day burn
+Q = consumed_total*1e6 / duration # grams / second
+println("Q value (g/acre/sec): ", Q)
 
 # Extract coordinate extents from your burn scene reference bounds
 # (Assuming burn_scene_obj is already loaded)
