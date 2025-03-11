@@ -1,73 +1,37 @@
-
 using LazySets
 using Images
-using TiffImages
+using FileIO
 using Random
-
 using SMeshSmokeValidation
+using Colors
 
-# Include the functions defined in 'sample_perimeter.jl' here.
 include("sample_perimeter.jl")
-
-# Set the RNG seed for reproducibility
 Random.seed!(42)
 
-dataset = "HenryCoe"
+dataset = "Malibu"
 
 # Save directory for the plots
-save_dir = "plots/" * dataset
+save_dir = joinpath("plots", dataset)
 if !isdir(save_dir)
     mkdir(save_dir)
 end
 
 # Pull the background image
+img_path = joinpath("data", "BurnData", "DEMs_and_Buffered_Burns", "Background_$(dataset).png")
+background_img = load(img_path)
+background_img = RGB.(background_img)
 
-background_img = TiffImages.load("data\\BurnData\\DEMs_and_Buffered_Burns\\DEM_" * dataset * ".tif")
 println("Background image size: ", size(background_img))
 println("Background image type: ", typeof(background_img))
 println("Background image color type: ", eltype(background_img))
+println("A sample pixel: ", background_img[10, 3])
 
-println(background_img[10, 3])
-
-# Convert type from Q0f15 to Float32 (i.e., 255 levels of gray)
-background_img = Gray{Float32}.(background_img)
-#reinterpret(Float32, background_img)
-#convert(Array{Float32}, background_img)
-println("Background image size: ", size(background_img))
-println("Background image type: ", typeof(background_img))
-println("Background image color type: ", eltype(background_img))
-
-println(background_img[10, 3])
-
-println(background_img[end:-1:1, :][10, 3])
-
-
-
-# error("Stop here")
-
-reference_bounds_filename = "data\\BurnData\\" * dataset * "\\ReferencePoints\\referencelocations.txt"
+reference_bounds_filename = joinpath("data", "BurnData", dataset, "ReferencePoints", "referencelocations.txt")
 references_lines = readlines(reference_bounds_filename)
 
-ref_points = Vector{Float64}[]
-for ref_line in references_lines[2:end]
-    matches = collect(eachmatch(COORD_REGEX, ref_line))
-    coords = [collect(parse_coord(m.captures[1])) for m in matches]
-    push!(ref_points, coords[1])
-end
-
-background_img_x_bound = [ref_points[1][1], ref_points[2][1]]
-background_img_y_bound = [ref_points[1][2], ref_points[2][2]]
-
-p_back = plot(background_img_x_bound, background_img_y_bound,
-                 background_img[end:-1:1, :], yflip = false,
-                 dpi=300)
-savefig(p_back, save_dir * "/background_image_test.png")
-
-# println("Background image bounds: ", background_img_x_bound, background_img_y_bound)
-
-# Parse the burn areas
-burnareas_filename = "data\\BurnData\\" * dataset * "\\BurnAreas\\" * dataset * "BurnAreas.txt"
-snode_locations_filename = "data\\BurnData\\" * dataset * "\\SNodeLocations\\snodelocations.txt"
+# burnareas_filename
+burnareas_filename = joinpath("data", "BurnData", dataset, "BurnAreas", "$(dataset)BurnAreas.txt")
+snode_locations_filename = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations.txt")
 
 burn_scene_obj = load_burn_scene_from_files(
     burnareas_filename, snode_locations_filename, reference_bounds_filename)
@@ -79,17 +43,29 @@ println("Number of snode locations: ", length(burn_scene_obj.snode_locations))
 println("Reference Bounds in x: ", burn_scene_obj.reference_bounds_x)
 println("Reference Bounds in y: ", burn_scene_obj.reference_bounds_y)
 
+# Extract coordinate extents from your burn scene reference bounds
+# (Assuming burn_scene_obj is already loaded)
+xlims = burn_scene_obj.reference_bounds_x  # e.g., [342384.49223234225, 343981.7686972534]
+ylims = burn_scene_obj.reference_bounds_y  # e.g., [3.768196725691409e6, 3.769207180586237e6]
+
+# Create coordinate arrays that span the image dimensions
+nx = size(background_img, 2)  # number of columns (x-dimension)
+ny = size(background_img, 1)  # number of rows (y-dimension)
+background_x = range(xlims[1], stop=xlims[2], length=nx)
+background_y = range(ylims[1], stop=ylims[2], length=ny)
+
 num_steps = length(burn_scene_obj.t) + 1
 
-for t_ind in 1:num_steps
-    # println("Plotting burn scene at t = ", t_ind)
+# Now call plot_scene with the background image and its coordinates
+for t_ind in 1:(length(burn_scene_obj.t)+1)
     p = plot_scene(burn_scene_obj, t_ind, 
-        n_smoke_samples=10)
+                   n_smoke_samples=10, 
+                   background_image=background_img,
+                   background_x=background_x,
+                   background_y=background_y)
     
     # Save the plot to file 
-    savefig(p, save_dir * "/burn_scene_$(dataset)_t$(t_ind).png")
-
+    savefig(p, joinpath(save_dir, "burn_scene_test_$(dataset)_topobkgd_$(t_ind).png"))
 end
-
 
 println("Done!")
