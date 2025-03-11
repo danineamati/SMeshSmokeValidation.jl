@@ -18,38 +18,49 @@ if !isdir(save_dir)
 end
 
 
+default_wind_dist = WindDistribution(
+    [0.0, -120, -180], 
+    [9.0, 5.0, 5.0], 
+    [0.7, 0.15, 0.15], 
+    5.0, 1.0;
+    in_deg=true
+)
+
+# Malibu Wind Nominal
+malibu_nominal_wind_dist = WindDistribution(
+    [-120.0, # Towards the ocean following a Santa Ana event 
+       90.0, # From the ocean
+      150.0], # Along the slopes
+    [9.0, 5.0, 5.0], 
+    [0.1, 0.7, 0.2], 
+    5.0, 1.0;
+    in_deg=true
+)
+
+# Malibu Wind Fuzzed
+malibu_fuzzed_wind_dist = WindDistribution(
+    [-120.0, # Towards the ocean following a Santa Ana event 
+       90.0, # From the ocean
+      150.0], # Along the slopes
+    [100.0, 5.0, 5.0], 
+    [0.7, 0.25, 0.05], 
+    15.0, 1.0;
+    in_deg=true
+)
+
+
+
 if save_dir == "plots/wind_distribution_testing"
-    wind_dist = WindDistribution(
-        [0.0, -120, -180], 
-        [9.0, 5.0, 5.0], 
-        [0.7, 0.15, 0.15], 
-        5.0, 1.0;
-        in_deg=true
-    )
+    wind_dist = default_wind_dist
+    wind_dist_nominal = default_wind_dist
 
 elseif save_dir == "plots/wind_examples/Malibu_nominal"
-    # Malibu Wind Nominal
-    wind_dist = WindDistribution(
-        [-120.0, # Towards the ocean following a Santa Ana event 
-           90.0, # From the ocean
-          150.0], # Along the slopes
-        [9.0, 5.0, 5.0], 
-        [0.1, 0.7, 0.2], 
-        5.0, 1.0;
-        in_deg=true
-    )
+    wind_dist = malibu_nominal_wind_dist
+    wind_dist_nominal = malibu_nominal_wind_dist
 
 elseif save_dir == "plots/wind_examples/Malibu_fuzzed"
-    # Malibu Wind Fuzzed
-    wind_dist = WindDistribution(
-        [-120.0, # Towards the ocean following a Santa Ana event 
-           90.0, # From the ocean
-          150.0], # Along the slopes
-        [25.0, 5.0, 5.0], 
-        [0.7, 0.25, 0.05], 
-        15.0, 1.0;
-        in_deg=true
-    )
+    wind_dist = malibu_fuzzed_wind_dist
+    wind_dist_nominal = malibu_nominal_wind_dist
 end
 
 
@@ -144,5 +155,30 @@ end
 
 savefig(p, joinpath(save_dir, "wind_distribution.png"))
 
+
+# Get the log likelihood of the wind trajectory
+loglikelihoods_from_sampled = [wind_loglikelihood(wind_dist, wd, ws) 
+    for (wd, ws) in zip(wind_dir_traj, wind_speed_traj)]
+
+loglikelihoods_from_nominal = [wind_loglikelihood(wind_dist_nominal, wd, ws) 
+    for (wd, ws) in zip(wind_dir_traj, wind_speed_traj)]
+
+# Plot the log likelihoods as a histogram
+lowest_loglikelihood = min(minimum(loglikelihoods_from_sampled), minimum(loglikelihoods_from_nominal))
+highest_loglikelihood = max(maximum(loglikelihoods_from_sampled), maximum(loglikelihoods_from_nominal))
+
+n_bins = 200
+bin_edges = range(lowest_loglikelihood, stop=highest_loglikelihood, length=n_bins+1)
+
+
+sampled_label = occursin("fuzzed", lowercase(save_dir)) ? "Fuzzed" : "Sampled"
+
+h = histogram(loglikelihoods_from_sampled, label=sampled_label, 
+    alpha=0.5, bins=bin_edges, normalize=:pdf, 
+    xlabel="Wind Vector Log Likelihood", ylabel="Estimated PDF", framestyle = :box)
+histogram!(loglikelihoods_from_nominal, label="Nominal", 
+    alpha=0.5, bins=bin_edges, normalize=:pdf)
+
+savefig(h, joinpath(save_dir, "wind_loglikelihood_histogram.png"))
 
 println("Done!")
