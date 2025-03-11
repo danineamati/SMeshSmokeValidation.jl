@@ -166,3 +166,41 @@ function sample_wind_dir_speed_trajectory(wind_dist::WindDistribution, n_samples
 end
 
 
+# Calculate the likelihood or loglikelihood of a wind dir and speed pair
+function wind_likelihood(wind_dist::WindDistribution, 
+                        wind_dir::Float64, wind_speed::Float64)
+    dir_pdf = wind_dir_likelihood_circ(wind_dist, wind_dir)
+    speed_pdf = pdf(wind_dist.wind_speed_dist, wind_speed)
+
+    return dir_pdf * speed_pdf
+end
+
+function wind_loglikelihood(wind_dist::WindDistribution, 
+                        wind_dir::Float64, wind_speed::Float64)
+    dir_logpdf = wind_dir_loglikelihood_circ(wind_dist, wind_dir)
+    speed_logpdf = logpdf(wind_dist.wind_speed_dist, wind_speed)
+
+    return dir_logpdf + speed_logpdf
+end
+
+
+# Repeat for a full trajectory of wind speed and direction pairs
+function wind_likelihood_traj(wind_dist::WindDistribution, 
+                        wind_dirs::Vector{Float64}, wind_speeds::Vector{Float64})
+    dir_pdf = wind_dir_likelihood_circ(wind_dist, wind_dirs)
+    speed_pdf = pdf(wind_dist.wind_speed_dist, wind_speeds)
+
+    # Return the final product
+    return prod(dir_pdf) * prod(speed_pdf)
+end
+
+function wind_loglikelihood_traj(wind_dist::WindDistribution, 
+                        wind_dirs::Vector{Float64}, wind_speeds::Vector{Float64})
+    dir_logpdf = wind_dir_loglikelihood_circ(wind_dist, wind_dirs)
+    speed_logpdf = logpdf(wind_dist.wind_speed_dist, wind_speeds)
+
+    # Return the final sum
+    return sum(dir_logpdf) + sum(speed_logpdf)
+end
+
+

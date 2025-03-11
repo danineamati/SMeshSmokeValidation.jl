@@ -11,19 +11,47 @@ include("../src/wind_distribution.jl")
 
 Random.seed!(42)
 
-save_dir = "plots/wind_distribution_testing"
+# save_dir = "plots/wind_distribution_testing"
+save_dir = "plots/wind_examples/Malibu_fuzzed"
 if !isdir(save_dir)
-    mkdir(save_dir)
+    mkpath(save_dir)
 end
 
 
-wind_dist = WindDistribution(
-    [0.0, -120, -180], 
-    [9.0, 5.0, 5.0], 
-    [0.7, 0.15, 0.15], 
-    5.0, 1.0;
-    in_deg=true
-)
+if save_dir == "plots/wind_distribution_testing"
+    wind_dist = WindDistribution(
+        [0.0, -120, -180], 
+        [9.0, 5.0, 5.0], 
+        [0.7, 0.15, 0.15], 
+        5.0, 1.0;
+        in_deg=true
+    )
+
+elseif save_dir == "plots/wind_examples/Malibu_nominal"
+    # Malibu Wind Nominal
+    wind_dist = WindDistribution(
+        [-120.0, # Towards the ocean following a Santa Ana event 
+           90.0, # From the ocean
+          150.0], # Along the slopes
+        [9.0, 5.0, 5.0], 
+        [0.1, 0.7, 0.2], 
+        5.0, 1.0;
+        in_deg=true
+    )
+
+elseif save_dir == "plots/wind_examples/Malibu_fuzzed"
+    # Malibu Wind Fuzzed
+    wind_dist = WindDistribution(
+        [-120.0, # Towards the ocean following a Santa Ana event 
+           90.0, # From the ocean
+          150.0], # Along the slopes
+        [25.0, 5.0, 5.0], 
+        [0.7, 0.25, 0.05], 
+        15.0, 1.0;
+        in_deg=true
+    )
+end
+
 
 println("Wind Distribution: ", wind_dist)
 println("Type of wind_dist: ", typeof(wind_dist))
