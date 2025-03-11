@@ -1,7 +1,10 @@
 
+using Distributions
 
+# The mixture model type seem so to be 
+# MixtureModel{Univariate, Continuous, VonMises{Float64}, Categorical{Float64, Vector{Float64}}}
 struct WindDistribution
-    wind_dir_dists::MixtureModel{VonMises}
+    wind_dir_dists::MixtureModel #{Distributions.VonMises}
     wind_speed_dist::Normal
 end
 
@@ -10,10 +13,21 @@ function WindDistribution(
         mixture_dir_means::Vector{Float64}, 
         mixture_dir_κ::Vector{Float64}, 
         mixture_weights::Vector{Float64}, 
-        speed_mean::Float64, speed_std::Float64)
+        speed_mean::Float64, speed_std::Float64;
+        in_deg::Bool=true)
 
-    mixture_components = [VonMises(mixture_dir_means[i], mixture_dir_κ[i]) 
-        for i in 1:length(mixture_dir_means)]
+    if in_deg
+        mixture_dir_means = [deg2rad(mean) for mean in mixture_dir_means]
+    end
+
+    # Wrap the means to be in the range of -π to π
+    mixture_means_wrapped = [rem2pi(mean, RoundNearest) for mean in mixture_dir_means]
+
+    mixture_components = [VonMises(mix_mean, mix_κ) 
+        for (mix_mean, mix_κ) in zip(mixture_means_wrapped, mixture_dir_κ)]
+
+    # Normalize the mixture_weights
+    mixture_weights = mixture_weights ./ sum(mixture_weights)
 
     return WindDistribution(
         MixtureModel(mixture_components, mixture_weights),
@@ -22,23 +36,72 @@ function WindDistribution(
 end
 
 # Get the standard deviation of each component of the mixture
-function std(wind_dist::WindDistribution)
-    return [rad2deg(std(component)) for component in wind_dist.wind_dir_dists.distributions]
+function dir_stds(wind_dist::WindDistribution, in_deg::Bool=true)
+    componend_stds = [std(component) for component in wind_dist.wind_dir_dists.components]
+    if in_deg
+        return [rad2deg(std(component)) for component in wind_dist.wind_dir_dists.components]
+    end
+    return componend_stds
 end
 
 # Convenience for getting the wind likelihood and loglikelihood that
 # wraps around the circle
+# The Distributions.jl implementation of the VonMises distribution does not
+# wrap around the circle, so we need to get the max of  the likelihoods for the 
+# same angle but with branches from -2π to 0 and 0 to 2π
+function wind_dir_likelihood_circ(vm::Distributions.VonMises, wind_dir::Float64)
+    likelihoods = pdf(vm, [wind_dir - 2π, wind_dir, wind_dir + 2π])
+    return maximum(likelihoods)
+end
+
+function wind_dir_likelihood_circ(vm::Distributions.VonMises, wind_dirs::Vector{Float64})
+    l_below = pdf(vm, wind_dirs .- 2π)
+    l_base = pdf(vm, wind_dirs)
+    l_above = pdf(vm, wind_dirs .+ 2π)
+    
+    # Get the element-wise maximum likelihood for each angle
+    return [max(l_below[i], l_base[i], l_above[i]) for i in 1:length(wind_dirs)]
+end
+
 function wind_dir_likelihood_circ(wind_dist::WindDistribution, wind_dir::Float64)
-    # The Distributions.jl implementation of the VonMises distribution does not
-    # wrap around the circle, so we need to sum the likelihoods for the same
-    # angle but with branches from -2π to 0 and 0 to 2π
-    likelihoods = pdf.(wind_dist.wind_dir_dists, [wind_dir, wind_dir + 2π])
-    return sum(likelihoods)
+    likelihoods = pdf(wind_dist.wind_dir_dists, [wind_dir - 2π, wind_dir, wind_dir + 2π])
+    return maximum(likelihoods)
+end
+
+function wind_dir_likelihood_circ(wind_dist::WindDistribution, wind_dirs::Vector{Float64})
+    l_below = pdf(wind_dist.wind_dir_dists, wind_dirs .- 2π)
+    l_base = pdf(wind_dist.wind_dir_dists, wind_dirs)
+    l_above = pdf(wind_dist.wind_dir_dists, wind_dirs .+ 2π)
+    
+    return [max(l_below[i], l_base[i], l_above[i]) for i in 1:length(wind_dirs)]
+end
+
+# Log likelihoods
+
+function wind_dir_loglikelihood_circ(vm::Distributions.VonMises, wind_dir::Float64)
+    loglikelihoods = logpdf(vm, [wind_dir - 2π, wind_dir, wind_dir + 2π])
+    return maximum(loglikelihoods)
+end
+
+function wind_dir_loglikelihood_circ(vm::Distributions.VonMises, wind_dirs::Vector{Float64})
+    logl_below = logpdf(vm, wind_dirs .- 2π)
+    logl_base = logpdf(vm, wind_dirs)
+    logl_above = logpdf(vm, wind_dirs .+ 2π)
+
+    return [max(logl_below[i], logl_base[i], logl_above[i]) for i in 1:length(wind_dirs)]
 end
 
 function wind_dir_loglikelihood_circ(wind_dist::WindDistribution, wind_dir::Float64)
-    loglikelihoods = logpdf.(wind_dist.wind_dir_dists, [wind_dir, wind_dir + 2π])
-    return sum(loglikelihoods)
+    loglikelihoods = logpdf(wind_dist.wind_dir_dists, [wind_dir - 2π, wind_dir, wind_dir + 2π])
+    return maximum(loglikelihoods)
+end
+
+function wind_dir_loglikelihood_circ(wind_dist::WindDistribution, wind_dirs::Vector{Float64})
+    logl_below = logpdf(wind_dist.wind_dir_dists, wind_dirs .- 2π)
+    logl_base = logpdf(wind_dist.wind_dir_dists, wind_dirs)
+    logl_above = logpdf(wind_dist.wind_dir_dists, wind_dirs .+ 2π)
+
+    return [max(logl_below[i], logl_base[i], logl_above[i]) for i in 1:length(wind_dirs)]
 end
 
 # Convenience for getting the overall likelihood and loglikelihood of the wind

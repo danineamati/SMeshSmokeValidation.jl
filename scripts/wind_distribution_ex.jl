@@ -5,6 +5,11 @@
 
 using Distributions
 using Plots
+using Random
+
+include("../src/wind_distribution.jl")
+
+Random.seed!(42)
 
 save_dir = "plots/wind_distribution_testing"
 if !isdir(save_dir)
@@ -12,71 +17,95 @@ if !isdir(save_dir)
 end
 
 
-mixture_components = [
-    VonMises(0.0, 9.0),
-    VonMises(deg2rad(-120), 5.0),
-    VonMises(deg2rad(-180), 5.0)
-]
-
-# Print the variance of each component
-for (i, component) in enumerate(mixture_components)
-    println("Component ", i, " standard deviation (deg): ", rad2deg(std(component)))
-end
-
-wind_dir_dists = MixtureModel(
-    mixture_components,
-    [0.7, 0.15, 0.15]
+wind_dist = WindDistribution(
+    [0.0, -120, -180], 
+    [9.0, 5.0, 5.0], 
+    [0.7, 0.15, 0.15], 
+    5.0, 1.0;
+    in_deg=true
 )
 
-# Visualize the likelihood of the wind direction on a polar plot
-polar_plot = plot(legend=false, framestyle = :box, proj = :polar)
+println("Wind Distribution: ", wind_dist)
+println("Type of wind_dist: ", typeof(wind_dist))
+println("Type of wind_dist.wind_dir_dists: ", typeof(wind_dist.wind_dir_dists))
+println("Type of wind_dist.wind_speed_dist: ", typeof(wind_dist.wind_speed_dist))
 
-# Plot the likelihood of the wind direction
-# The Distributions.jl implementation of the VonMises distribution does not
-# wrap around the circle, so we need to plot the likelihood for double the 
-# circle and then collapse it to the circle (i.e., sum the likelihoods for
-# the same angle but with branches from -2π to 0 and 0 to 2π)
-query_angles = [collect(-2π:0.01:0), collect(0:0.01:2π)]
-for component in mixture_components
-    branch1_pdf = pdf.(component, query_angles[1])
-    branch2_pdf = pdf.(component, query_angles[2])
-    pdf_sum = branch1_pdf + branch2_pdf
-    plot!(query_angles[2], pdf_sum, lw=2)
+# Print the standard deviation of each component
+println("Standard deviations of the components [deg]: ", dir_stds(wind_dist))
+
+# Visualize the likelihood of the wind direction on a polar plot
+plot_types = [:cartesian, :polar]
+plot_yscales = [:linear, :log]
+query_angles = collect(-π:0.01:π)
+
+for plot_type in plot_types
+    for yscale in plot_yscales
+        polar_plot = plot(legend=false, framestyle = :box, proj = plot_type, yscale=yscale)
+
+        # Plot the likelihood of the wind direction
+        for component in wind_dist.wind_dir_dists.components
+            comp_likelihoods = wind_dir_likelihood_circ(
+                component, query_angles)
+            plot!(polar_plot, query_angles, comp_likelihoods, lw=2)
+
+            # println("length of comp_likelihoods: ", length(comp_likelihoods))
+            # println("comp_likelihoods between ", minimum(comp_likelihoods), 
+            #     " and ", maximum(comp_likelihoods))
+        end
+
+        total_likelihood = wind_dir_likelihood_circ(wind_dist, query_angles)
+        plot!(polar_plot, query_angles, total_likelihood, lw=2, color="black")
+
+        # println("total_likelihood between ", minimum(total_likelihood), 
+        #     " and ", maximum(total_likelihood))
+
+        savefig(polar_plot, joinpath(save_dir, "wind_direction_likelihood_" * string(plot_type) * "_yscale_" * string(yscale) * ".png"))
+    end
 end
 
-branch1_pdf = pdf.(wind_dir_dists, query_angles[1])
-branch2_pdf = pdf.(wind_dir_dists, query_angles[2])
-pdf_sum = branch1_pdf + branch2_pdf
-plot!(polar_plot, query_angles[2], pdf_sum, lw=2, color="black")
+# Repeat for the log likelihood of the wind direction
 
-savefig(polar_plot, joinpath(save_dir, "wind_direction_likelihood.png"))
+log_min = Inf
 
+for plot_type in plot_types
+    polar_plot_log = plot(legend=false, framestyle = :box, proj = plot_type)
 
+    # Offset the log likelihood to avoid negative values
+    if plot_type == :cartesian
+        log_offset = 0.0
+    else
+        log_offset = log_min
+    end
+    println("log_offset: ", log_offset)
 
-# Include the wind speed
+    for component in wind_dist.wind_dir_dists.components
+        comp_loglikelihood = wind_dir_loglikelihood_circ(
+            component, query_angles) .- log_offset
 
-wind_speed_dist = Normal(5.0, 1.0)
+        global log_min = min(log_min, minimum(comp_loglikelihood))
+
+        plot!(polar_plot_log, query_angles, comp_loglikelihood, lw=2)
+    end
+
+    total_loglikelihood = wind_dir_loglikelihood_circ(wind_dist, query_angles)
+    plot!(polar_plot_log, query_angles, total_loglikelihood .- log_offset, 
+            lw=2, color="black")
+
+    savefig(polar_plot_log, joinpath(save_dir, "wind_direction_loglikelihood_" * string(plot_type) * ".png"))
+end
 
 
 # Visualize through sampling
 n_samples = 1000
 
-
-# Sample the wind directions
-wind_dirs = rand(wind_dir_dists, n_samples)
-
-# Sample the wind speeds
-wind_speeds = rand(wind_speed_dist, n_samples)
-
-# Convert the wind directions and speeds to vectors
-to_wind_vec(wdir, wspeed) = wspeed .* [cos(wdir), sin(wdir)]
-
-wind_vecs = to_wind_vec.(wind_dirs, wind_speeds)
+# Sample the wind trajectory
+wind_dir_traj, wind_speed_traj = sample_wind_dir_speed_trajectory(
+    wind_dist, n_samples)
 
 # Plot the wind vectors
 p = plot(framestyle = :box, proj = :polar)
 
-for (wd, ws) in zip(wind_dirs, wind_speeds)
+for (wd, ws) in zip(wind_dir_traj, wind_speed_traj)
     # quiver!([0.0], [0.0], quiver=([wind_vec[1]], [wind_vec[2]]), 
     #         color="black", lw=2, label="", alpha=25 / n_samples)
     quiver!([0.0], [0.0], quiver=([wd], [ws]), 
@@ -87,3 +116,5 @@ end
 
 savefig(p, joinpath(save_dir, "wind_distribution.png"))
 
+
+println("Done!")
