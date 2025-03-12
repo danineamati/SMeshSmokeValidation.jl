@@ -204,3 +204,31 @@ function wind_loglikelihood_traj(wind_dist::WindDistribution,
 end
 
 
+# Sample from the wind distribution
+function sample_wind_dir_speed(wind_dist::WindDistribution, in_deg::Bool=false)
+    wind_dir = rand(wind_dist.wind_dir_dists) # Radians
+    wind_speed = rand(wind_dist.wind_speed_dist)
+
+    if in_deg
+        wind_dir = rad2deg(wind_dir)
+    end
+
+    return wind_dir, wind_speed
+end
+
+
+function sample_wind_dir_speed_trajectory(
+        wind_dist::WindDistribution, n_samples::Int, in_deg::Bool=false)
+    dir_speed_pairs = [sample_wind_dir_speed(wind_dist) for _ in 1:n_samples]
+
+    # Split the pairs
+    dirs = [pair[1] for pair in dir_speed_pairs]
+    speeds = [pair[2] for pair in dir_speed_pairs]
+
+    # Convert to degrees if needed
+    if in_deg
+        dirs = rad2deg.(dirs)
+    end
+
+    return dirs, speeds
+end
