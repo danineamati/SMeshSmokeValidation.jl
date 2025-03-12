@@ -11,8 +11,8 @@ include("../src/wind_distribution.jl")
 
 Random.seed!(42)
 
-# save_dir = "plots/wind_distribution_testing"
-save_dir = "plots/wind_examples/Malibu_nominal"
+save_dir = "plots/wind_examples/wind_distribution_testing"
+# save_dir = "plots/wind_examples/Malibu_nominal"
 if !isdir(save_dir)
     mkpath(save_dir)
 end
@@ -50,7 +50,7 @@ malibu_fuzzed_wind_dist = WindDistribution(
 
 
 
-if save_dir == "plots/wind_distribution_testing"
+if save_dir == "plots/wind_examples/wind_distribution_testing"
     wind_dist = default_wind_dist
     wind_dist_nominal = default_wind_dist
 
