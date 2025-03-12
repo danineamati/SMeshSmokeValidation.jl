@@ -18,6 +18,7 @@ A struct that contains the x, y, and t values of the scene.
 struct BurnScene
     burn_polys_t::Vector{Polygon}
     t::Vector{Int64}
+    total_burn_poly::Polygon
     snode_locations::Vector{Vector{Float64}}
     reference_bounds_x::Vector{Float64}
     reference_bounds_y::Vector{Float64}
@@ -188,6 +189,17 @@ function load_burn_area_file(filename)
 end
 
 
+function load_total_burn_area(filename)
+  lines = readlines(filename)
+  # Parse the coordinates into polygons
+  total_burn_coords = parse_lines_to_coords(lines, start_line=2)
+  total_burn_poly = Polygon(total_burn_coords[1])
+
+  return total_burn_poly
+  
+end
+
+
 function load_locations_file(filename; start_line=2)
   lines = readlines(filename)
   # Parse the coordinates
@@ -204,8 +216,12 @@ function load_burn_scene_from_files(
       burn_area_filename, 
       snode_locations_filename,
       reference_bounds_filename = nothing)
+  
   burn_polys = load_burn_area_file(burn_area_filename)
+  total_burn_poly = load_total_burn_area(burn_area_filename)
+
   snode_locations = load_locations_file(snode_locations_filename)
+  
   if isnothing(reference_bounds_filename)
     reference_bounds_x = []
     reference_bounds_y = []
@@ -218,8 +234,11 @@ function load_burn_scene_from_files(
 
   end
 
-  burn_scene_obj = BurnScene(burn_polys, 1:length(burn_polys), 
-      snode_locations, reference_bounds_x, reference_bounds_y)
+  burn_scene_obj = BurnScene(
+      burn_polys, 1:length(burn_polys), 
+      total_burn_poly,
+      snode_locations, 
+      reference_bounds_x, reference_bounds_y)
   return burn_scene_obj
 end
 
