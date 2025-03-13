@@ -186,6 +186,8 @@ end
 """
 [DEPRECATED]
 
+[DEPRECATED]
+
     make_burn_polys_from_coords(x::Vector{Float64}, y::Vector{Float64})
 
 Given the x and y coordinates of the scene, we convert the coordinates to a
@@ -262,8 +264,10 @@ end
 # r""" """ is necessary due to the escape characters in the regex
 r"""
     parse_lines_to_coords(coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
+    parse_lines_to_coords(coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
 
 Given a line from a file that contains the coordinates of a polygon, we parse 
+the line and return a vector of coordinates.
 the line and return a vector of coordinates.
 
 The coordinate regex is set to r"\[([\d\.\-+eE,\s]+)\]" by default, which
@@ -271,6 +275,10 @@ matches the "text [x1, y1] [x2, y2] ..." format.
 
 To-Do: Align better with the parse_coord_str_to_poly function.
 """
+function parse_lines_to_coords(lines; coord_regex=r"\[([\d\.\-+eE,\s]+)\]",
+    start_line=3)  
+  coords_per_line = []
+  for line in lines[start_line:end]
 function parse_lines_to_coords(lines; coord_regex=r"\[([\d\.\-+eE,\s]+)\]",
     start_line=3)  
   coords_per_line = []
@@ -286,11 +294,23 @@ end
 function parse_lines_to_poly(lines, coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
   polys_per_line = [Polygon(coords) 
       for coords in parse_lines_to_coords(lines, coord_regex=coord_regex)]
+      push!(coords_per_line, coords)
+  end
+  return coords_per_line
+end
+
+
+function parse_lines_to_poly(lines, coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
+  polys_per_line = [Polygon(coords) 
+      for coords in parse_lines_to_coords(lines, coord_regex=coord_regex)]
   return polys_per_line
 end
 
 
 function load_burn_area_file(filename)
+  lines = readlines(filename)
+  # Parse the coordinates into polygons
+  polys_per_line = parse_lines_to_poly(lines)
   lines = readlines(filename)
   # Parse the coordinates into polygons
   polys_per_line = parse_lines_to_poly(lines)
