@@ -5,7 +5,7 @@ using Distributions
 # MixtureModel{Univariate, Continuous, VonMises{Float64}, Categorical{Float64, Vector{Float64}}}
 struct WindDistribution
     wind_dir_dists::MixtureModel #{Distributions.VonMises}
-    wind_speed_dist::Normal
+    wind_speed_dist::Normal # To-Do: Change to Gamma Distribution
 end
 
 # Constructor
