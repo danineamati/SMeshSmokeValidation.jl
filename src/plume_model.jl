@@ -131,6 +131,9 @@ struct PlumeFromPointSource
     source_xyz::Vector{Float64}
 end
 
+# empty constructor
+PlumeFromPointSource() = PlumeFromPointSource(0.0, 0.0, x->0.0, x->0.0, [0.0, 0.0, 0.0])
+
 
 """
     PlumeFromPointSource(Q::Float64, h::Float64, stability_class::String

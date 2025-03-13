@@ -17,7 +17,9 @@ function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
     # try k times to sample the smoke, if it fails, return an empty array
     for k_ind in 1:k_times
         try
-            smoke_samples = sample(burnt_poly, n_samples)
+            # We need to specify LazySets.sample to avoid ambiguity with
+            # Distributions and Random
+            smoke_samples = LazySets.sample(burnt_poly, n_samples)
             return smoke_samples
         catch e
             println("------> Sampling failed at k_ind = ", k_ind)
@@ -50,7 +52,7 @@ function sample_smoke_from_scene(burn_scene_obj::BurnScene,
 
     for t_burnt in 1:(t_ind - 1)
         # Sample the smoke from the interior of the polygon at time t_burnt
-        println("Sampling smoke from polygon ", t_burnt)
+        # println("Sampling smoke from polygon ", t_burnt)
         push!(smoke_samples, sample_smoke_from_poly(
             burn_scene_obj.burn_polys_t[t_burnt], n_samples))
     end
@@ -58,7 +60,8 @@ function sample_smoke_from_scene(burn_scene_obj::BurnScene,
     # stack them all together as one array
     smoke_samples = vcat(smoke_samples...)
 
-    println("Number of smoke samples: ", length(smoke_samples))
+    println("Number of smoke samples: ", length(smoke_samples), 
+                " of ", (t_ind - 1) *n_samples)
 
     return smoke_samples
 end
