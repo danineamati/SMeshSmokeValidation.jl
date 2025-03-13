@@ -7,10 +7,18 @@ struct HeightDistribution
     height_dist::Gamma
 end
 
+# Handle the relationship between Q and h (i.e., units and eventually the 
+# Briggs Plume Rise model)
+function Q_to_h(Q)
+    return Q / 10.0
+end
+
 # Constructor
 function HeightDistribution(Q_release::Float64, h_std::Float64)
-    gamma_α = Q_release^2 / h_std^2
-    gamma_θ = h_std^2 / Q_release
+    h_mu = Q_to_h(Q_release)
+
+    gamma_α = h_mu^2 / h_std^2
+    gamma_θ = h_std^2 / h_mu
     return HeightDistribution(Gamma(gamma_α, gamma_θ))
 end
 
