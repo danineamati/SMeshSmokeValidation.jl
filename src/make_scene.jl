@@ -31,7 +31,9 @@ end
 # Default constructor with just the burn polygons and time values
 BurnScene(burn_polys_t::Vector{Polygon}, t::Vector{Int64}) = BurnScene(
     burn_polys_t, t, 
-    Vector{Vector{Float64}}(), Vector{Float64}(), Vector{Float64}())
+    Vector{Vector{Float64}}(), Vector{Float64}(), Vector{Float64}(),
+    Vector{Vector{Float64}}()
+)
 
 # -----------------------------
 # Parsing and distance functions
@@ -186,8 +188,6 @@ end
 """
 [DEPRECATED]
 
-[DEPRECATED]
-
     make_burn_polys_from_coords(x::Vector{Float64}, y::Vector{Float64})
 
 Given the x and y coordinates of the scene, we convert the coordinates to a
@@ -221,46 +221,6 @@ function make_burn_polys_from_coords(x, y, t)
     return burn_polys_t
 end
 
-
-# """
-#     make_scene_from_csv(scene_csv_path::String)
-
-# Given a CSV file that parameterizes the scene and the fire front progression,
-# we convert that file to a vertex-based representation of the scene as a
-# function of time.
-
-# # Arguments
-# - `scene_csv_path::String`: The path to the CSV file that contains the scene
-#   parameters.
-
-# # Returns
-# - `burn_scene`: A struct that contains the x, y, and t values of the scene.
-# """
-# function make_scene_from_csv(scene_csv_path::String)
-#     # Read the CSV file
-#     df = CSV.read(scene_csv_path)
-#     # Extract the columns
-#     x = df[:, :x]
-#     y = df[:, :y]
-#     t = df[:, :t]
-
-#     burn_polys_t = make_scene_polys_from_coords(x, y, t)
-
-#     return burn_scene(burn_polys_t, t)
-# end
-
-"""
-Parse a coordinate string of the form "x, y" into a tuple (x, y).
-
-To-Do: Likely we want to return an array rather than a tuple
-"""
-function parse_coord(str)
-    parts = split(str, ",")
-    x = parse(Float64, strip(parts[1]))
-    y = parse(Float64, strip(parts[2]))
-    return (x, y)
-end
-
 # r""" """ is necessary due to the escape characters in the regex
 r"""
     parse_lines_to_coords(coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
@@ -279,21 +239,8 @@ function parse_lines_to_coords(lines; coord_regex=r"\[([\d\.\-+eE,\s]+)\]",
     start_line=3)  
   coords_per_line = []
   for line in lines[start_line:end]
-function parse_lines_to_coords(lines; coord_regex=r"\[([\d\.\-+eE,\s]+)\]",
-    start_line=3)  
-  coords_per_line = []
-  for line in lines[start_line:end]
       matches = collect(eachmatch(coord_regex, line))
       coords = [collect(parse_coord(m.captures[1])) for m in matches]
-      push!(coords_per_line, coords)
-  end
-  return coords_per_line
-end
-
-
-function parse_lines_to_poly(lines, coord_regex=r"\[([\d\.\-+eE,\s]+)\]")
-  polys_per_line = [Polygon(coords) 
-      for coords in parse_lines_to_coords(lines, coord_regex=coord_regex)]
       push!(coords_per_line, coords)
   end
   return coords_per_line
@@ -346,7 +293,12 @@ function load_burn_scene_from_files(
       total_burn_area_filename = nothing)
   burn_polys = load_burn_area_file(burn_area_filename)
   snode_locations = load_locations_file(snode_locations_filename)
-  sample_locations = sample_perimeter_from_file(total_burn_area_filename)
+
+  if isnothing(total_burn_area_filename)
+    sample_locations = []
+  else
+    sample_locations = sample_perimeter_from_file(total_burn_area_filename)
+  end
 
   if isnothing(reference_bounds_filename)
     reference_bounds_x = []

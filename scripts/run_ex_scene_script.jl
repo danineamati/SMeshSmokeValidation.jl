@@ -18,11 +18,12 @@ end
 
 # Parse the burn areas
 burnareas_filename = "data\\BurnData\\" * dataset * "\\BurnAreas\\" * dataset * "BurnAreas.txt"
-snode_locations_filename = "data\\BurnData\\" * dataset * "\\SNodeLocations\\snodelocations.txt"
+snode_locations_filename = "data\\BurnData\\" * dataset * "\\SNodeLocations\\snodelocations_sim1.txt"
 ref_bounds_filename = "data\\BurnData\\" * dataset * "\\ReferencePoints\\referencelocations.txt"
 
 burn_scene_obj = load_burn_scene_from_files(
-    burnareas_filename, snode_locations_filename, ref_bounds_filename)
+    burnareas_filename, snode_locations_filename, ref_bounds_filename,
+    burnareas_filename)
 
 # Generate the smoke samples
 n_smoke_samples = 10

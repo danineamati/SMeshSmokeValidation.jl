@@ -10,7 +10,7 @@ include("sample_perimeter.jl")
 Random.seed!(42)
 
 # Model Input Paramters
-dataset = "HenryCoe"      # Desired burn (e.g., "HenryCoe", "Shasta", "Malibu")
+dataset = "Shasta"      # Desired burn (e.g., "HenryCoe", "Shasta", "Malibu")
 simulation = 1            # 1-3
 moisture_level = "moist"  # "moderate", "moist", "wet"
 

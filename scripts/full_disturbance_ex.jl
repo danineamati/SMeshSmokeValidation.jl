@@ -14,7 +14,7 @@ end
 
 # Defaults
 default_disturb = FullDisturbances(
-    HeightDistribution(100.0, 80.0),
+    HeightDistribution(1000.0, 80.0),
     WindDistribution(
         [0.0, -120, -180], 
         [9.0, 5.0, 5.0], 
@@ -27,7 +27,7 @@ default_disturb = FullDisturbances(
 
 # Malibu Nominal
 malibu_nominal_disturb = FullDisturbances(
-    HeightDistribution(40.0, 30.0),
+    HeightDistribution(400.0, 30.0),
     WindDistribution(
         [-120.0, 90.0, 150.0], 
         [9.0, 5.0, 5.0], 
@@ -40,7 +40,7 @@ malibu_nominal_disturb = FullDisturbances(
 
 # Malibu Wind Fuzzed
 malibu_fuzzed_disturb = FullDisturbances(
-    HeightDistribution(80.0, 5.0),
+    HeightDistribution(800.0, 5.0),
     WindDistribution(
         [-120.0, 90.0, 150.0], 
         [9.0, 5.0, 5.0], 

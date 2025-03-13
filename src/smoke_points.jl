@@ -17,7 +17,9 @@ function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
     # try k times to sample the smoke, if it fails, return an empty array
     for k_ind in 1:k_times
         try
-            smoke_samples = sample(burnt_poly, n_samples)
+            # We need to specify LazySets.sample to avoid ambiguity with
+            # Distributions and Random
+            smoke_samples = LazySets.sample(burnt_poly, n_samples)
             return smoke_samples
         catch e
             println("------> Sampling failed at k_ind = ", k_ind)

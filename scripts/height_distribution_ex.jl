@@ -9,19 +9,19 @@ include("../src/height_distribution.jl")
 
 Random.seed!(42)
 
-save_dir = "plots/height_examples/height_distribution_testing"
+save_dir = "plots/height_examples/Malibu_fuzzed"
 if !isdir(save_dir)
     mkpath(save_dir)
 end
 
 
-default_height_dist = HeightDistribution(100.0, 80.0)
+default_height_dist = HeightDistribution(1000.0, 80.0)
 
 # Malibu Height Nominal (moist)
-malibu_nominal_height_dist = HeightDistribution(40.0, 30.0)
+malibu_nominal_height_dist = HeightDistribution(400.0, 30.0)
 
 # Malibu Height Fuzzed (dry)
-malibu_fuzzed_height_dist = HeightDistribution(80.0, 5.0)
+malibu_fuzzed_height_dist = HeightDistribution(800.0, 5.0)
 
 
 if save_dir == "plots/height_examples/height_distribution_testing"
