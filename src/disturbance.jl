@@ -60,3 +60,36 @@ function disturbance_trajectory_log_likelihood(
     return height_logpdf + wind_logpdf
 end
 
+
+# Get the most likely disturbance trajectories returned in order of likelihood
+function most_likely_disturbance_trajectories(
+        loglikelihoods::Vector{Float64}, 
+        trajectory_list::Vector{FullDisturbanceTrajectory},
+        num_most_likely::Int)
+
+    # Get the most likely trajectories
+    most_likely_indices = partialsortperm(
+        loglikelihoods, 1:num_most_likely, rev=true)
+    most_likely_trajectories = [trajectory_list[i] 
+        for i in most_likely_indices]
+
+    return most_likely_trajectories, most_likely_indices
+end
+
+
+function most_likely_disturbance_trajectories(
+        disturbances::FullDisturbances, 
+        trajectory_list::Vector{FullDisturbanceTrajectory},
+        num_most_likely::Int)
+
+    # Log-likelihoods
+    loglikelihoods = [
+        disturbance_trajectory_log_likelihood(disturbances, traj) 
+            for traj in trajectory_list
+    ]
+
+    # Get the most likely trajectories and the top indices
+    return most_likely_disturbance_trajectories(loglikelihoods, 
+                trajectory_list, num_most_likely)
+end
+

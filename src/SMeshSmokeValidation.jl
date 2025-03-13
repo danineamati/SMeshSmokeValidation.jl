@@ -18,6 +18,17 @@ println("Setting Exports")
 
 # Exported functions
 export 
+    # Height Distribution
+    HeightDistribution,
+    # Wind Distribution
+    WindDistribution,
+    # Disturbances
+    FullDisturbances,
+    FullDisturbanceTrajectory,
+    sample_disturbances,
+    disturbance_trajectory_likelihood,
+    disturbance_trajectory_log_likelihood,
+    most_likely_disturbance_trajectories,
     # Make Scene
     BurnScene,
     parse_coord_str_to_poly,
@@ -43,6 +54,9 @@ export
 
 println("Loading SMeshSmokeValidation...")
 # Included files (order needs to match dependencies)
+include("height_distribution.jl")
+include("wind_distribution.jl")
+include("disturbance.jl")
 include("make_scene.jl")
 include("plume_model.jl")
 include("smoke_points.jl")

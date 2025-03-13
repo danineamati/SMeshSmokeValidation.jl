@@ -2,10 +2,7 @@
 using Plots
 using Random
 
-include("../src/wind_distribution.jl")
-include("../src/height_distribution.jl")
-include("../src/disturbance.jl")
-
+using SMeshSmokeValidation
 
 Random.seed!(42)
 
@@ -118,12 +115,23 @@ savefig(h, joinpath(save_dir, "disturbance_loglikelihood_histogram.png"))
 # Print the "k" disturbance trajectory with the highest log-likelihoods
 # under the nominal distribution
 k_top = 10
-top_indices = sortperm(loglikelihoods_nominal, rev=true)[1:k_top]
+top_trajectories, top_indices = most_likely_disturbance_trajectories(
+    loglikelihoods_nominal, trajectories, k_top
+)
+
+# Repeat from the disturbance distribution and check the top trajectories
+# are the same 
+top_trajectories_direct, top_indices_direct = most_likely_disturbance_trajectories(
+    disturb_nominal, trajectories, k_top
+)
+
+@assert top_indices == top_indices_direct
+@assert top_trajectories == top_trajectories_direct
 
 println("Top $k_top disturbance trajectories under the nominal distribution:")
 for i in 1:k_top
     println("\nTrajectory $i has log-likelihood ", loglikelihoods_nominal[top_indices[i]])
-    println("Trajectory $i: ", trajectories[top_indices[i]])
+    println("Trajectory $i: ", top_trajectories[i])
 end
 
 
