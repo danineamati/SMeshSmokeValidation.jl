@@ -10,6 +10,7 @@ using Plots
 using Images
 using Random
 using Distributions
+using CSV, DataFrames
 
 # Internal dependencies
 # include("Counted.jl")

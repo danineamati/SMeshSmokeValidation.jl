@@ -10,28 +10,39 @@ using Colors           # For handling colors
 using CSV, DataFrames  # For reading and processing CSV data
 
 using SMeshSmokeValidation
-include("sample_perimeter.jl")
 
 # Set a global RNG seed for reproducibility
 Random.seed!(42)
 
 ###############################
-# Helper Function to Compute Q
+# Simulation Helper Functions 
 ###############################
-function compute_Q(dataset::String, moisture_level::String)
-    Acreage_Consumption = joinpath("data", "FuelConsumptionProfiles", "$(dataset)_Scenarios.csv")
-    df = CSV.read(Acreage_Consumption, DataFrame)
-    consumed_total = parse(Float64, df[11, Symbol(moisture_level)])
-    duration = 3600 * 24  # seconds in one day burn
-    Q = consumed_total * 1e6 / duration
-    println("Computed Q value for $(dataset): ", Q, " g/acre/sec")
-    return Q
+
+function initialize_scene(dataset::String, simulation::Int, moisture_level::String)
+    # Define file paths using joinpath
+    burn_area_file       = joinpath("data", "BurnData", dataset, "BurnAreas", "$(dataset)BurnAreas.txt")
+    snode_locations_file = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations_sim$(simulation).txt")
+    reference_bounds_file= joinpath("data", "BurnData", dataset, "ReferencePoints", "referencelocations.txt")
+    total_burn_area_file = joinpath("data", "BurnData", dataset, "BurnAreas", "TotalBurnArea.txt")
+    acreage_consumption_file  = joinpath("data", "FuelConsumptionProfiles", "$(dataset)_Scenarios.csv")
+    
+    # Load the BurnScene using the helper from make_scene.jl.
+    burn_scene = load_burn_scene_from_files(burn_area_file, snode_locations_file, reference_bounds_file, total_burn_area_file, acreage_consumption_file, moisture_level)
+
+    # Print details to verify instantiation
+    println("Initialized BurnScene:")
+    println(" - Burn polygons: ", length(burn_scene.burn_polys_t))
+    println(" - Time steps: ", length(burn_scene.t))
+    println(" - Sensor nodes: ", length(burn_scene.snode_locations))
+    println(" - X bounds: ", burn_scene.reference_bounds_x)
+    println(" - Y bounds: ", burn_scene.reference_bounds_y)
+    println(" - Perimeter sample points: ", length(burn_scene.perimeter_sample_points))
+    println(" - Q value: ", burn_scene.Q)
+    
+    return burn_scene
 end
 
-###############################
-# Helper Functions for Scene and Simulation
-###############################
-function run_disturbance_example()
+function run_disturbance_example(burn_scene::BurnScene)
     println("\n=== Running Disturbance Example ===")
     
     # Define the save directory using joinpath
@@ -40,6 +51,7 @@ function run_disturbance_example()
         mkpath(save_dir)
     end
 
+    Q = burn_scene.Q
     # Define disturbance parameter distributions
     default_disturb = FullDisturbances(
         HeightDistribution(1000.0, 80.0),
@@ -52,7 +64,7 @@ function run_disturbance_example()
         )
     )
     malibu_nominal_disturb = FullDisturbances(
-        HeightDistribution(400.0, 30.0),
+        HeightDistribution(Q, 30.0),
         WindDistribution(
             [-120.0, 90.0, 150.0],
             [9.0, 5.0, 5.0],
@@ -62,7 +74,7 @@ function run_disturbance_example()
         )
     )
     malibu_fuzzed_disturb = FullDisturbances(
-        HeightDistribution(800.0, 5.0),
+        HeightDistribution(Q*2, 5.0),
         WindDistribution(
             [-120.0, 90.0, 150.0],
             [9.0, 5.0, 5.0],
@@ -120,17 +132,15 @@ function run_disturbance_example()
     println("=== Disturbance Example Completed ===\n")
 end
 
-function run_burn_scene_with_background()
-    println("\n=== Running Burn Scene with Background ===")
-    # Model Input Parameters
-    dataset = "Shasta"      # Change as needed
-    simulation = 1          # 1-3
-    moisture_level = "moist"  # "moderate", "moist", "wet"
 
-    # Set up save directory using joinpath
+# Instead of reloading the scene data, we now pass the BurnScene object.
+function run_burn_scene_with_background(burn_scene::BurnScene, dataset::String, simulation::Int, moisture_level::String)
+    println("\n=== Running Burn Scene with Background ===")
+    
+    # Set up save directory
     save_dir = joinpath("plots", dataset)
     if !isdir(save_dir)
-        mkdir(save_dir)
+        mkpath(save_dir)
     end
 
     # Load the background image
@@ -139,83 +149,52 @@ function run_burn_scene_with_background()
     background_img = RGB.(background_img)
     println("Background image dimensions: ", size(background_img))
 
-    # Load burn scene data (without perimeter sampling)
-    reference_bounds_filename = joinpath("data", "BurnData", dataset, "ReferencePoints", "referencelocations.txt")
-    burnareas_filename = joinpath("data", "BurnData", dataset, "BurnAreas", "$(dataset)BurnAreas.txt")
-    snode_locations_filename = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations_sim$(simulation).txt")
-    burn_scene_obj = load_burn_scene_from_files(burnareas_filename, snode_locations_filename, reference_bounds_filename)
-
-    println("Burn Scene Specs:")
-    println(" - Burn polygons: ", length(burn_scene_obj.burn_polys_t))
-    println(" - Time steps: ", length(burn_scene_obj.t))
-    println(" - Sensor nodes: ", length(burn_scene_obj.snode_locations))
-    println(" - X bounds: ", burn_scene_obj.reference_bounds_x)
-    println(" - Y bounds: ", burn_scene_obj.reference_bounds_y)
-
-    # Compute Q value using the helper function
-    Q = compute_Q(dataset, moisture_level)
-
     # Create coordinate arrays for the background image
-    xlims = burn_scene_obj.reference_bounds_x
-    ylims = burn_scene_obj.reference_bounds_y
+    xlims = burn_scene.reference_bounds_x
+    ylims = burn_scene.reference_bounds_y
     nx = size(background_img, 2)
     ny = size(background_img, 1)
     background_x = range(xlims[1], stop=xlims[2], length=nx)
     background_y = range(ylims[1], stop=ylims[2], length=ny)
-
+    
     # Plot the burn scene over time
-    for t_ind in 1:(length(burn_scene_obj.t) + 1)
-        p = plot_scene(burn_scene_obj, t_ind,
+    for t_ind in 1:(length(burn_scene.t) + 1)
+        p = plot_scene(burn_scene, t_ind,
                        n_smoke_samples=10,
                        background_image=background_img,
                        background_x=background_x,
                        background_y=background_y)
         savefig(p, joinpath(save_dir, "burn_scene_test_$(dataset)_topobkgd_$(t_ind).png"))
     end
-
+    
     println("=== Burn Scene with Background Completed ===\n")
 end
 
-function run_changing_wind_scene()
+function run_changing_wind_scene(burn_scene::BurnScene, dataset::String, moisture_level::String)
     println("\n=== Running Changing Wind Scene ===")
-    dataset = "Malibu"
-    moisture_level = "moist"  # Adjust if needed
-
-    # Set up save directory using joinpath
+    
+    # Set up save directory
     save_dir = joinpath("plots", dataset, "changing_wind")
     if !isdir(save_dir)
-        mkdir(save_dir)
+        mkpath(save_dir)
     end
-
-    # Load burn scene data for Malibu with perimeter sampling.
-    # Provide the total burn area filename so that perimeter_sample_points gets set.
-    burnareas_filename = joinpath("data", "BurnData", dataset, "BurnAreas", "$(dataset)BurnAreas.txt")
-    snode_locations_filename = joinpath("data", "BurnData", dataset, "SNodeLocations", "snodelocations_sim1.txt")
-    ref_bounds_filename = joinpath("data", "BurnData", dataset, "ReferencePoints", "referencelocations.txt")
-    total_burn_area_filename = joinpath("data", "BurnData", dataset, "BurnAreas","TotalBurnArea.txt")  # adjust as needed
-    burn_scene_obj = load_burn_scene_from_files(burnareas_filename, snode_locations_filename, ref_bounds_filename, total_burn_area_filename)
-
-    # Generate smoke samples and plumes
-    n_smoke_samples = 10
-    smoke_samples_per_time = gen_smoke_samples_over_time(burn_scene_obj, n_smoke_samples=n_smoke_samples)
     
-    # Compute Q value for Malibu using the helper function
-    Q = compute_Q(dataset, moisture_level)
+    # Generate smoke samples and plumes using the preloaded scene
+    n_smoke_samples = 10
+    smoke_samples_per_time = gen_smoke_samples_over_time(burn_scene, n_smoke_samples=n_smoke_samples)
+    
+    # Use the preloaded Q (or compute it if not present)
+    Q = burn_scene.Q
     
     h_plume = 10.0
     air_class = "D"
     plumes_per_time = gen_plumes_over_time(smoke_samples_per_time, Q, h_plume, air_class)
-
-    # Use the perimeter pseudo-nodes (sampled from the total burn area file) as sensor locations
-    sensor_locations = burn_scene_obj.perimeter_sample_points
-    # If sensor locations need to be extended to 3D, you could map:
-    sensor_locations = [ [pt[1], pt[2], 0.0] for pt in sensor_locations ]
-
-    # Compute sensor readings and then take log10
-    sensor_readings_per_time = gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_vecs=to_wind_vec.( [30.0,35.0,40.0,35.0,-30.0,-25.0,-20.0,35.0,30.0] ))
-    sensor_readings_per_time_log = [log10.(sensor_readings) for sensor_readings in sensor_readings_per_time]
-
-    # For the wind vectors, ensure you define them (here we define them inline)
+    
+    # Use the perimeter pseudo-nodes as sensor locations
+    sensor_locations = burn_scene.snode_locations
+    sensor_locations = [ [pt[1], pt[2], 0.0] for pt in sensor_locations ]  # extend to 3D if needed
+    
+    # Define wind vectors
     wind_speed = 10.0
     wind_dirs = [30.0, 35.0, 40.0, 35.0, -30.0, -25.0, -20.0, 35.0, 30.0]
     to_wind_vec(wdir) = wind_speed .* [cosd(wdir), sind(wdir), 0.0]
@@ -223,61 +202,110 @@ function run_changing_wind_scene()
     wind_len_mult = 3.0
     vmin = -10.0
     vmax = 0.0
+    
+    # Compute sensor readings and take log10
+    sensor_readings_per_time = gen_sensor_readings_of_plume(plumes_per_time, sensor_locations, wind_vecs)
+    sensor_readings_per_time_log = [ log10.(sr) for sr in sensor_readings_per_time ]
 
-    # Plot sensor readings for each time step
-    for t in 1:(length(burn_scene_obj.t) + 1)
-        p = plot(framestyle=:box)
-        curr_wind = wind_vecs[t]
+    # Compute perimeter readings using perimeter pseudo‑nodes
+    perimeter_nodes = burn_scene.perimeter_sample_points
+    perimeter_nodes_3D = [ [pt[1], pt[2], 0.0] for pt in perimeter_nodes ]
+    perimeter_readings_per_time = gen_sensor_readings_of_plume(plumes_per_time, perimeter_nodes_3D, wind_vecs)
+    perimeter_readings_per_time_log = [ log10.(sr) for sr in perimeter_readings_per_time ]
 
-        # Plot burn polygons with differentiated colors for past/current/future
-        for ind in eachindex(burn_scene_obj.burn_polys_t)
-            if ind < t
-                plot!(burn_scene_obj.burn_polys_t[ind], color=:black, alpha=0.5, label="", linealpha=0.0)
-            elseif ind == t
-                plot!(burn_scene_obj.burn_polys_t[ind], color=:red, label="")
-            else
-                plot!(burn_scene_obj.burn_polys_t[ind], color=:lightgray, alpha=0.5, label="", linealpha=0.0)
-            end
-        end
-
-        # Plot smoke sample locations and wind direction arrows
-        if length(smoke_samples_per_time[t]) > 0
-            for source_location in eachcol(smoke_samples_per_time[t])
-                source_location = source_location[:]  # convert to 1D array
-                scatter!([source_location[1]], [source_location[2]], color="gray", label="")
-                quiver!([source_location[1]], [source_location[2]],
-                        quiver=([wind_len_mult * curr_wind[1]], [wind_len_mult * curr_wind[2]]),
-                        color="black", lw=2, label="")
-            end
-        end
-
-        # Plot sensor readings with a gradient
-        scatter!([pt[1] for pt in sensor_locations],
-                 [pt[2] for pt in sensor_locations],
-                 zcolor=[sensor_reading for sensor_reading in sensor_readings_per_time_log[t]],
-                 label="",
-                 c=cgrad(:bilbao, rev=true),
-                 clim=(vmin, vmax))
-
-        # Annotate sensor readings with values
-        vert_offset = 30
-        txt_size = 8
-        for (i, pt) in enumerate(sensor_locations)
-            annotate!(pt[1], pt[2] + vert_offset,
-                      text(round(sensor_readings_per_time_log[t][i], digits=1), txt_size),
-                      halign=:center, valign=:center, color="black")
-        end
-
-        xlims!(burn_scene_obj.reference_bounds_x...)
-        ylims!(burn_scene_obj.reference_bounds_y...)
-        curr_wind_dir = Int(wind_dirs[t])
-        savefig(p, joinpath(save_dir, "example_readings_$(t)_$(curr_wind_dir).png"))
+    # Save directories (adjust as needed)
+    sensor_save_dir = joinpath(save_dir, "sensor_readings")
+    perimeter_save_dir = joinpath(save_dir, "perimeter_readings")
+    if !isdir(sensor_save_dir)
+        mkpath(sensor_save_dir)
+    end
+    if !isdir(perimeter_save_dir)
+        mkpath(perimeter_save_dir)
     end
 
-    # Plot the plume maps over time
+    # Annotate sensor readings
+    vert_offset = 30
+    txt_size = 8
+
+    # --- Plot Sensor Readings ---
+    for t in 1:(length(burn_scene.t) + 1)
+        p = plot(framestyle=:box)
+        curr_wind = wind_vecs[t]
+        
+        # Plot burn polygons (same for both sets)
+        for ind in eachindex(burn_scene.burn_polys_t)
+            if ind < t
+                plot!(burn_scene.burn_polys_t[ind], color=:black, alpha=0.5, label="", linealpha=0.0)
+            elseif ind == t
+                plot!(burn_scene.burn_polys_t[ind], color=:red, label="")
+            else
+                plot!(burn_scene.burn_polys_t[ind], color=:lightgray, alpha=0.5, label="", linealpha=0.0)
+            end
+        end
+        
+        # Plot original sensor locations with readings
+        scatter!([pt[1] for pt in sensor_locations],
+                [pt[2] for pt in sensor_locations],
+                zcolor=[sr for sr in sensor_readings_per_time_log[t]],
+                label="",
+                c=cgrad(:bilbao, rev=true),
+                clim=(vmin, vmax))
+        
+
+        for (i, pt) in enumerate(sensor_locations)
+            annotate!(pt[1], pt[2] + vert_offset,
+                    text(round(sensor_readings_per_time_log[t][i], digits=1), txt_size),
+                    halign=:center, valign=:center, color="black")
+        end
+        
+        xlims!(burn_scene.reference_bounds_x...)
+        ylims!(burn_scene.reference_bounds_y...)
+        curr_wind_dir = Int(wind_dirs[t])
+        savefig(p, joinpath(sensor_save_dir, "example_sensor_readings_$(t)_$(curr_wind_dir).png"))
+    end
+
+    # --- Plot Perimeter Readings ---
+    for t in 1:(length(burn_scene.t) + 1)
+        p = plot(framestyle=:box)
+        curr_wind = wind_vecs[t]
+        
+        # Plot burn polygons (same as before)
+        for ind in eachindex(burn_scene.burn_polys_t)
+            if ind < t
+                plot!(burn_scene.burn_polys_t[ind], color=:black, alpha=0.5, label="", linealpha=0.0)
+            elseif ind == t
+                plot!(burn_scene.burn_polys_t[ind], color=:red, label="")
+            else
+                plot!(burn_scene.burn_polys_t[ind], color=:lightgray, alpha=0.5, label="", linealpha=0.0)
+            end
+        end
+        
+        # Plot perimeter sensor locations with readings
+        scatter!([pt[1] for pt in perimeter_nodes_3D],
+                [pt[2] for pt in perimeter_nodes_3D],
+                zcolor=[sr for sr in perimeter_readings_per_time_log[t]],
+                label="",
+                c=cgrad(:bilbao, rev=true),
+                clim=(vmin, vmax))
+        
+        # Annotate perimeter readings
+        for (i, pt) in enumerate(perimeter_nodes_3D)
+            annotate!(pt[1], pt[2] + vert_offset,
+                    text(round(perimeter_readings_per_time_log[t][i], digits=1), txt_size),
+                    halign=:center, valign=:center, color="black")
+        end
+        
+        xlims!(burn_scene.reference_bounds_x...)
+        ylims!(burn_scene.reference_bounds_y...)
+        curr_wind_dir = Int(wind_dirs[t])
+        savefig(p, joinpath(perimeter_save_dir, "example_perimeter_readings_$(t)_$(curr_wind_dir).png"))
+    end
+
+    
+    # Plot plume maps over time
     println("Plotting plume maps...")
-    bounds = vcat(burn_scene_obj.reference_bounds_x..., burn_scene_obj.reference_bounds_y...)
-    for t in 1:(length(burn_scene_obj.t) + 1)
+    bounds = vcat(burn_scene.reference_bounds_x..., burn_scene.reference_bounds_y...)
+    for t in 1:(length(burn_scene.t) + 1)
         curr_wind = wind_vecs[t]
         p = plot_multiple_plumes_bounds(plumes_per_time[t], bounds, curr_wind,
                                         x_num=101, y_num=103, vmax=vmax)
@@ -290,19 +318,30 @@ function run_changing_wind_scene()
                         color="black", lw=2, label="")
             end
         end
-        xlims!(burn_scene_obj.reference_bounds_x...)
-        ylims!(burn_scene_obj.reference_bounds_y...)
+        xlims!(burn_scene.reference_bounds_x...)
+        ylims!(burn_scene.reference_bounds_y...)
         curr_wind_dir = Int(wind_dirs[t])
         savefig(p, joinpath(save_dir, "example_plume_multiple_$(t)_$(curr_wind_dir).png"))
     end
-
+    
     println("=== Changing Wind Scene Completed ===\n")
 end
 
+###############################
+# Main Function
+###############################
 function main()
-    run_disturbance_example()
-    run_burn_scene_with_background()
-    run_changing_wind_scene()
+    # Define parameters (using the same dataset for both scenes)
+    dataset = "Shasta"
+    simulation = 1
+    moisture_level = "moist"
+    
+    # Initialize the scene once
+    burn_scene = initialize_scene(dataset, simulation, moisture_level)
+
+    run_disturbance_example(burn_scene)
+    run_burn_scene_with_background(burn_scene, dataset, simulation, moisture_level)
+    run_changing_wind_scene(burn_scene, dataset, moisture_level)
 end
 
 main()

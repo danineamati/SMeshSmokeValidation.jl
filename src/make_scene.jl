@@ -26,14 +26,24 @@ struct BurnScene
     reference_bounds_x::Vector{Float64}
     reference_bounds_y::Vector{Float64}
     perimeter_sample_points::Vector{Vector{Float64}}
+    Q::Float64
 end
 
 # Default constructor with just the burn polygons and time values
 BurnScene(burn_polys_t::Vector{Polygon}, t::Vector{Int64}) = BurnScene(
     burn_polys_t, t, 
     Vector{Vector{Float64}}(), Vector{Float64}(), Vector{Float64}(),
-    Vector{Vector{Float64}}()
+    Vector{Vector{Float64}}(), 0.0
 )
+
+function compute_Q(dataset::String, moisture_level::String)
+  df = CSV.read(dataset, DataFrame)
+  consumed_total = parse(Float64, df[11, Symbol(moisture_level)])
+  duration = 3600 * 24  # seconds in one day burn
+  Q = consumed_total * 1e6 / duration
+  println("Computed Q value for $(dataset): ", Q, " g/acre/sec")
+  return Q
+end
 
 # -----------------------------
 # Parsing and distance functions
@@ -289,8 +299,11 @@ end
 function load_burn_scene_from_files(
       burn_area_filename, 
       snode_locations_filename,
-      reference_bounds_filename = nothing,
-      total_burn_area_filename = nothing)
+      reference_bounds_filename,
+      total_burn_area_filename,
+      acreage_consumption_file,
+      moisture_level)
+
   burn_polys = load_burn_area_file(burn_area_filename)
   snode_locations = load_locations_file(snode_locations_filename)
 
@@ -311,9 +324,9 @@ function load_burn_scene_from_files(
     reference_bounds_y = sort([r[2] for r in reference_bounds])
 
   end
-
+  Q = compute_Q(acreage_consumption_file, moisture_level)
   burn_scene_obj = BurnScene(burn_polys, 1:length(burn_polys), 
-      snode_locations, reference_bounds_x, reference_bounds_y, sample_locations)
+      snode_locations, reference_bounds_x, reference_bounds_y, sample_locations, Q)
   return burn_scene_obj
 end
 
