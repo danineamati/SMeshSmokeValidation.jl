@@ -230,11 +230,14 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
     end
 
     # Annotate sensor readings
-    vert_offset = 30
+    vert_offset = 0
+    horizontal_offset = 150
     txt_size = 8
 
+    num_timesteps = length(burn_scene.t) + 1
+
     # --- Plot Sensor Readings ---
-    for t in 1:(length(burn_scene.t) + 1)
+    for t in 1:num_timesteps
         p = plot(framestyle=:box)
         curr_wind = wind_vecs[t]
         
@@ -259,7 +262,7 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
         
 
         for (i, pt) in enumerate(sensor_locations)
-            annotate!(pt[1], pt[2] + vert_offset,
+            annotate!(pt[1] + horizontal_offset, pt[2] + vert_offset,
                     text(round(sensor_readings_per_time_log[t][i], digits=1), txt_size),
                     halign=:center, valign=:center, color="black")
         end
@@ -271,7 +274,7 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
     end
 
     # --- Plot Perimeter Readings ---
-    for t in 1:(length(burn_scene.t) + 1)
+    for t in 1:num_timesteps
         p = plot(framestyle=:box)
         curr_wind = wind_vecs[t]
         
@@ -296,7 +299,7 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
         
         # Annotate perimeter readings
         for (i, pt) in enumerate(perimeter_nodes_3D)
-            annotate!(pt[1], pt[2] + vert_offset,
+            annotate!(pt[1] + horizontal_offset, pt[2] + vert_offset,
                     text(round(perimeter_readings_per_time_log[t][i], digits=1), txt_size),
                     halign=:center, valign=:center, color="black")
         end
@@ -307,11 +310,65 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
         savefig(p, joinpath(perimeter_save_dir, "example_perimeter_readings_$(t)_$(curr_wind_dir).png"))
     end
 
+    # Plot the perimeter readings and sensor readings together as a 
+    # side-by-side histograms per time step
+    println("Plotting sensor vs perimeter histograms...")
+
+    # lowest_loglikelihood = min(minimum(loglikelihoods_sampled), minimum(loglikelihoods_nominal))
+    # highest_loglikelihood = max(maximum(loglikelihoods_sampled), maximum(loglikelihoods_nominal))
+    # n_bins = 200
+    # bin_edges = range(lowest_loglikelihood, stop=highest_loglikelihood, length=n_bins+1)
+
+    # We want the x-axis to be the same for both histograms across all time steps
+    # so we compute the bin edges once and use them for all histograms, but we
+    # need to ignore the -Inf values in the sensor readings (due to log10)
+    min_val_to_plot = -10.0
+    max_val_to_plot = 0.0
+    sensor_readings_all = vcat(sensor_readings_per_time_log...)
+    # Print the number of -Inf values in the sensor readings
+    println("Number of -Inf values in sensor readings: ", sum(sensor_readings_all .== -Inf))
+    # Print the number of NaN values in the sensor readings
+    println("Number of NaN values in sensor readings: ", sum(isnan.(sensor_readings_all)))
+    sensor_readings_all = filter(x -> isfinite(x), sensor_readings_all)
+
+    perimeter_readings_all = vcat(perimeter_readings_per_time_log...)
+    # Print the number of -Inf values in the perimeter readings
+    println("Number of -Inf values in perimeter readings: ", sum(perimeter_readings_all .== -Inf))
+    # Print the number of NaN values in the perimeter readings
+    println("Number of NaN values in perimeter readings: ", sum(isnan.(perimeter_readings_all)))
+    perimeter_readings_all = filter(x -> isfinite(x), perimeter_readings_all)
+
+    lowest_finite_reading = max(min_val_to_plot, 
+        min(minimum(sensor_readings_all), minimum(perimeter_readings_all)))
+    highest_finite_reading = max(max_val_to_plot,
+        max(maximum(sensor_readings_all), maximum(perimeter_readings_all)))
+
+    println("Lowest finite reading: ", lowest_finite_reading)
+    println("Highest finite reading: ", highest_finite_reading)
+
+    n_bins = 20
+    bin_edges = range(lowest_finite_reading, stop=highest_finite_reading, length=n_bins+1)
+
+    for t in 1:num_timesteps
+        p_sensor = histogram(perimeter_readings_per_time_log[t], 
+                            bins=bin_edges, label="Perimeter Readings",
+                            xlabel="Log10 Perimeter Readings", ylabel="Frequency",
+                            framestyle=:box, dpi=300, alpha=0.5, 
+                            fillstyle = :/)
+        histogram!(sensor_readings_per_time_log[t], 
+                            bins=bin_edges, label="Sensor Readings",
+                            xlabel="Log10 Sensor Readings", ylabel="Frequency",
+                            framestyle=:box, dpi=300, alpha=0.5)
+        
+        savefig(p_sensor, joinpath(save_dir, "example_sensor_perimeter_histograms_$(t).png"))
+    end
+        
+
     
     # Plot plume maps over time
     println("Plotting plume maps...")
     bounds = vcat(burn_scene.reference_bounds_x..., burn_scene.reference_bounds_y...)
-    for t in 1:(length(burn_scene.t) + 1)
+    for t in 1:num_timesteps
         curr_wind = wind_vecs[t]
         p = plot_multiple_plumes_bounds(plumes_per_time[t], bounds, curr_wind,
                                         x_num=101, y_num=103, vmax=vmax)
@@ -345,8 +402,8 @@ function main()
     # Initialize the scene once
     burn_scene = initialize_scene(dataset, simulation, moisture_level)
 
-    run_disturbance_example(burn_scene)
-    run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
+    # run_disturbance_example(burn_scene)
+    # run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
     run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
 end
 
