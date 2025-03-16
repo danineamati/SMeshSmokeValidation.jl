@@ -1,6 +1,6 @@
-###############################
+#######################################
 # Load files and import libraries
-###############################
+#######################################
 using Plots
 using Random
 using LazySets         # For operations with geometric sets (used in burn scenes)
@@ -14,9 +14,9 @@ using SMeshSmokeValidation
 # Set a global RNG seed for reproducibility
 Random.seed!(42)
 
-###############################
+#######################################
 # Simulation Helper Functions 
-###############################
+#######################################
 
 function initialize_scene(dataset::String, simulation::Int, moisture_level::String)
     # Define file paths using joinpath
@@ -100,8 +100,9 @@ function run_disturbance_example(burn_scene::BurnScene)
     num_timesteps = 10
     num_trajectories = 1000
     trajectories = [ sample_disturbances(disturb, num_timesteps) for _ in 1:num_trajectories ]
-    likelihoods_sampled = [ disturbance_trajectory_likelihood(disturb, traj) for traj in trajectories ]
-    likelihoods_nominal = [ disturbance_trajectory_likelihood(disturb_nominal, traj) for traj in trajectories ]
+    # We will use the log-likelihoods for numerical stability
+    # likelihoods_sampled = [ disturbance_trajectory_likelihood(disturb, traj) for traj in trajectories ]
+    # likelihoods_nominal = [ disturbance_trajectory_likelihood(disturb_nominal, traj) for traj in trajectories ]
     loglikelihoods_sampled = [ disturbance_trajectory_log_likelihood(disturb, traj) for traj in trajectories ]
     loglikelihoods_nominal = [ disturbance_trajectory_log_likelihood(disturb_nominal, traj) for traj in trajectories ]
 
@@ -134,7 +135,9 @@ end
 
 
 # Instead of reloading the scene data, we now pass the BurnScene object.
-function run_burn_scene_with_background(burn_scene::BurnScene, dataset::String, simulation::Int, moisture_level::String)
+# Note that the burn scene already includes the simulation number and 
+# moisture level.
+function run_burn_scene_with_background(burn_scene::BurnScene, dataset::String) #, simulation::Int, moisture_level::String)
     println("\n=== Running Burn Scene with Background ===")
     
     # Set up save directory
@@ -170,7 +173,10 @@ function run_burn_scene_with_background(burn_scene::BurnScene, dataset::String, 
     println("=== Burn Scene with Background Completed ===\n")
 end
 
-function run_changing_wind_scene(burn_scene::BurnScene, dataset::String, moisture_level::String)
+# Instead of reloading the scene data, we now pass the BurnScene object.
+# Note that the burn scene already includes the simulation number and 
+# moisture level.
+function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, moisture_level::String)
     println("\n=== Running Changing Wind Scene ===")
     
     # Set up save directory
@@ -340,8 +346,8 @@ function main()
     burn_scene = initialize_scene(dataset, simulation, moisture_level)
 
     run_disturbance_example(burn_scene)
-    run_burn_scene_with_background(burn_scene, dataset, simulation, moisture_level)
-    run_changing_wind_scene(burn_scene, dataset, moisture_level)
+    run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
+    run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
 end
 
 main()
