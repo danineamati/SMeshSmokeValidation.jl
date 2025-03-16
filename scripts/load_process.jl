@@ -16,6 +16,9 @@ using SMeshSmokeValidation
 Random.seed!(42)
 
 
+# Pull in the wind data
+include("wind_configurations.jl")
+
 
 #######################################
 # Check failure 
@@ -69,58 +72,32 @@ function initialize_scene(dataset::String, simulation::Int, moisture_level::Stri
     return burn_scene
 end
 
-function run_disturbance_example(burn_scene::BurnScene)
+function run_disturbance_example(burn_scene::BurnScene, dataset::String)
     println("\n=== Running Disturbance Example ===")
     
     # Define the save directory using joinpath
-    save_dir = joinpath("plots", "disturbance_examples", "Malibu_fuzzed")
+    save_dir = joinpath("plots", "disturbance_examples", dataset)
     if !isdir(save_dir)
         mkpath(save_dir)
     end
 
     Q = burn_scene.Q
     # Define disturbance parameter distributions
-    default_disturb = FullDisturbances(
-        HeightDistribution(1000.0, 80.0),
-        WindDistribution(
-            [0.0, -120, -180],
-            [9.0, 5.0, 5.0],
-            [0.7, 0.15, 0.15],
-            5.0, 1.0;
-            in_deg=true
-        )
-    )
-    malibu_nominal_disturb = FullDisturbances(
-        HeightDistribution(Q, 30.0),
-        WindDistribution(
-            [-120.0, 90.0, 150.0],
-            [9.0, 5.0, 5.0],
-            [0.1, 0.7, 0.2],
-            10.0, 5.0;
-            in_deg=true
-        )
-    )
-    malibu_fuzzed_disturb = FullDisturbances(
-        HeightDistribution(Q*2, 5.0),
-        WindDistribution(
-            [-120.0, 90.0, 150.0],
-            [9.0, 5.0, 5.0],
-            [0.7, 0.15, 0.15],
-            5.0, 1.0;
-            in_deg=true
-        )
-    )
     
     # Choose disturbance distributions based on save_dir
-    if save_dir == joinpath("plots", "disturbance_examples", "full_disturbance_testing")
-        disturb = default_disturb
-        disturb_nominal = default_disturb
-    elseif save_dir == joinpath("plots", "disturbance_examples", "Malibu_nominal")
-        disturb = malibu_nominal_disturb
-        disturb_nominal = malibu_nominal_disturb
-    elseif save_dir == joinpath("plots", "disturbance_examples", "Malibu_fuzzed")
-        disturb = malibu_fuzzed_disturb
-        disturb_nominal = malibu_nominal_disturb
+    if dataset == "HenryCoe"
+        disturb = HENRY_COE_FUZZED(Q)
+        disturb_nominal = HENRY_COE_NOMINAL(Q)
+    elseif dataset == "Malibu"
+        disturb = MALIBU_FUZZED(Q)
+        disturb_nominal = MALIBU_NOMINAL(Q)
+    elseif dataset == "Shasta"
+        disturb = SHASTA_FUZZED(Q)
+        disturb_nominal = SHASTA_NOMINAL(Q)
+    else
+        println("Dataset not recognized. Using default disturbance.")
+        disturb = DEFAULT_DISTURBANCE(Q)
+        disturb_nominal = DEFAULT_DISTURBANCE(Q)
     end
 
     # Sample trajectories and compute likelihoods
@@ -156,6 +133,44 @@ function run_disturbance_example(burn_scene::BurnScene)
         println("Trajectory $i: Log-likelihood = $(loglikelihoods_nominal[top_indices[i]])")
         println("Trajectory $i: ", top_trajectories[i])
     end
+
+    # Plot the Wind Direction Plots
+    query_angles = collect(-π:0.01:π)
+
+    polar_plot = plot(legend=false, framestyle = :box, dpi = 300, proj = :polar)
+
+    # Plot the likelihood of the wind direction for the nominal
+    wind_components_nominal = disturb_nominal.wind_dist.wind_dir_dists.components
+    for (c_ind, component) in enumerate(wind_components_nominal)
+        comp_likelihoods = wind_dir_likelihood_circ(
+            component, query_angles)
+        plot!(polar_plot, query_angles, comp_likelihoods, 
+                lw=2, ls=:dot, color=c_ind)
+    end
+
+    # Plot the total likelihood
+    total_likelihood_nominal = wind_dir_likelihood_circ(
+        disturb_nominal.wind_dist, query_angles)
+        plot!(polar_plot, query_angles, total_likelihood_nominal, 
+                lw=2, color="gray")
+
+    # Plot the likelihood of the wind direction for the fuzzed
+    wind_components = disturb.wind_dist.wind_dir_dists.components
+    for (c_ind, component) in enumerate(wind_components)
+        comp_likelihoods = wind_dir_likelihood_circ(
+            component, query_angles)
+        plot!(polar_plot, query_angles, comp_likelihoods, 
+                lw=2, color=c_ind)
+    end
+
+    # Plot the total likelihood
+    total_likelihood = wind_dir_likelihood_circ(
+        disturb.wind_dist, query_angles)
+    plot!(polar_plot, query_angles, total_likelihood, 
+            lw=2, color="black")
+
+    savefig(polar_plot, 
+        joinpath(save_dir, "wind_direction_likelihood_" * dataset * ".png"))
 
     println("=== Disturbance Example Completed ===\n")
 end
@@ -436,16 +451,16 @@ end
 ###############################
 function main()
     # Define parameters (using the same dataset for both scenes)
-    dataset = "Shasta"
+    dataset = "HenryCoe"
     simulation = 1
     moisture_level = "moist"
     
     # Initialize the scene once
     burn_scene = initialize_scene(dataset, simulation, moisture_level)
 
-    # run_disturbance_example(burn_scene)
+    run_disturbance_example(burn_scene, dataset)
     # run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
-    run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
+    # run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
 end
 
 main()
