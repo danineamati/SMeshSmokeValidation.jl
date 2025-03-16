@@ -8,11 +8,38 @@ using Images           # For image loading and processing
 using FileIO           # For file I/O related to images
 using Colors           # For handling colors
 using CSV, DataFrames  # For reading and processing CSV data
+using Distributions    # For sampling from distributions
 
 using SMeshSmokeValidation
 
 # Set a global RNG seed for reproducibility
 Random.seed!(42)
+
+
+
+#######################################
+# Check failure 
+#######################################
+
+function is_failure(sensor_readings::Vector{Float64}, 
+                    perimeter_readings::Vector{Float64};
+                    convert_to_linear::Bool=false)
+    # Filter all the infinite values
+    sensor_readings = filter(x -> isfinite(x), sensor_readings)
+    perimeter_readings = filter(x -> isfinite(x), perimeter_readings)
+
+    if convert_to_linear
+        sensor_readings = 10 .^ sensor_readings
+        perimeter_readings = 10 .^ perimeter_readings
+    end
+
+    # If the mean of the perimeter is greater than the mean of the sensor 
+    # readings, then the sensor readings are failing to detect the plume
+    return Distributions.mean(perimeter_readings) > Distributions.mean(sensor_readings)
+    
+end
+
+
 
 #######################################
 # Simulation Helper Functions 
@@ -359,6 +386,20 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
                             bins=bin_edges, label="Sensor Readings",
                             xlabel="Log10 Sensor Readings", ylabel="Frequency",
                             framestyle=:box, dpi=300, alpha=0.5)
+
+        # Check if failure (linear and log scales) and include it in title 
+        # for clarity
+        is_fail_linear = is_failure(sensor_readings_per_time[t],
+                                    perimeter_readings_per_time[t],
+                                    convert_to_linear=true)
+        is_fail_log = is_failure(sensor_readings_per_time_log[t],
+                                perimeter_readings_per_time_log[t],
+                                convert_to_linear=false)
+        fail_str_linear = is_fail_linear ? "FAIL (linear)" : "PASS (linear)"
+        fail_str_log = is_fail_log ? "FAIL (log)" : "PASS (log)"
+
+        title_str = "Time Step $t: $fail_str_linear, $fail_str_log"
+        title!(title_str)
         
         savefig(p_sensor, joinpath(save_dir, "example_sensor_perimeter_histograms_$(t).png"))
     end
