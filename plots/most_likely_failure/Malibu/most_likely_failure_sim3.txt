@@ -1,0 +1,11 @@
+Number of trajectories: 100
+Number of failures (linear, any): 96
+Number of failures (log, any): 100
+Number of failures (linear, all): 0
+Number of failures (log, all): 0
+Number of failures (linear, half): 19
+Number of failures (log, half): 52
+Median number of timestep failures (linear): 2.0
+Median number of timestep failures (log): 4.0
+Mean number of timestep failures (linear): 2.49
+Mean number of timestep failures (log): 3.58

@@ -448,7 +448,9 @@ end
 
 
 
-function run_most_likely_failure(burn_scene::BurnScene, dataset::String)
+function run_most_likely_failure(burn_scene::BurnScene, 
+        dataset::String, simulation::Int;
+        num_trajectories::Int=100)
     println("\n=== Running Disturbance Example ===")
 
     # Reset Random seed for reproducibility
@@ -479,8 +481,7 @@ function run_most_likely_failure(burn_scene::BurnScene, dataset::String)
     end
 
     # Sample the distribution trajectories and compute likelihoods
-    num_timesteps = 10
-    num_trajectories = 2000
+    num_timesteps = length(burn_scene.t) + 1
     trajectories = [ sample_disturbances(disturb, num_timesteps) for _ in 1:num_trajectories ]
     loglikelihoods_sampled = [ disturbance_trajectory_log_likelihood(disturb, traj) for traj in trajectories ]
     loglikelihoods_nominal = [ disturbance_trajectory_log_likelihood(disturb_nominal, traj) for traj in trajectories ]
@@ -592,6 +593,22 @@ function run_most_likely_failure(burn_scene::BurnScene, dataset::String)
     println("Mean number of timestep failures (linear): ", mean(num_time_fails_linear))
     println("Mean number of timestep failures (log): ", mean(num_time_fails_log))
 
+    # Save the above numbers to file
+    save_file = joinpath(save_dir, "most_likely_failure_sim$(simulation).txt")
+    open(save_file, "w") do io
+        println(io, "Number of trajectories: ", num_trajectories)
+        println(io, "Number of failures (linear, any): ", sum(is_fail_linear_any))
+        println(io, "Number of failures (log, any): ", sum(is_fail_log_any))
+        println(io, "Number of failures (linear, all): ", sum(is_fail_linear_all))
+        println(io, "Number of failures (log, all): ", sum(is_fail_log_all))
+        println(io, "Number of failures (linear, half): ", sum(is_fail_linear_half))
+        println(io, "Number of failures (log, half): ", sum(is_fail_log_half))
+        println(io, "Median number of timestep failures (linear): ", median(num_time_fails_linear))
+        println(io, "Median number of timestep failures (log): ", median(num_time_fails_log))
+        println(io, "Mean number of timestep failures (linear): ", mean(num_time_fails_linear))
+        println(io, "Mean number of timestep failures (log): ", mean(num_time_fails_log))
+    end
+
     # Filter the log-likelihoods based on the failure criteria
     # Sampled
     logL_fail_linear_any_sampled = loglikelihoods_sampled[is_fail_linear_any]
@@ -616,67 +633,138 @@ function run_most_likely_failure(burn_scene::BurnScene, dataset::String)
         println("\nLinear, Any:")
         top_indices_fail_linear_any_nominal = partialsortperm(
             logL_fail_linear_any_nominal, 1:k_top, rev=true)
-        # println(top_indices_fail_linear_any)
-        println("log-likelihoods nominal: ", 
-            logL_fail_linear_any_nominal[top_indices_fail_linear_any_nominal])
-        println("log-likelihoods sampled: ", 
-            logL_fail_linear_any_sampled[top_indices_fail_linear_any_nominal])
+
+        top_logL_fail_linear_any_nominal = logL_fail_linear_any_nominal[top_indices_fail_linear_any_nominal]
+        top_logL_fail_linear_any_sampled = logL_fail_linear_any_sampled[top_indices_fail_linear_any_nominal]
+
+        println("top indices: ", top_indices_fail_linear_any_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_linear_any_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_linear_any_sampled)
+    else
+        top_indices_fail_linear_any_nominal = ones(Int, k_top)
+        top_logL_fail_linear_any_nominal = fill(NaN, k_top)
+        top_logL_fail_linear_any_sampled = fill(NaN, k_top)
     end
 
     if k_top < length(logL_fail_log_any_nominal)
         println("\nLog, Any:")
         top_indices_fail_log_any_nominal = partialsortperm(
             logL_fail_log_any_nominal, 1:k_top, rev=true)
-        # println(top_indices_fail_log_any)
-        println("log-likelihoods nominal: ", 
-            logL_fail_log_any_nominal[top_indices_fail_log_any_nominal])
-        println("log-likelihoods sampled: ",
-            logL_fail_log_any_sampled[top_indices_fail_log_any_nominal])
+
+        top_logL_fail_log_any_nominal = logL_fail_log_any_nominal[top_indices_fail_log_any_nominal]
+        top_logL_fail_log_any_sampled = logL_fail_log_any_sampled[top_indices_fail_log_any_nominal]
+
+        println("top indices: ", top_indices_fail_log_any_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_log_any_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_log_any_sampled)
+    else
+        top_indices_fail_log_any_nominal = ones(Int, k_top)
+        top_logL_fail_log_any_nominal = fill(NaN, k_top)
+        top_logL_fail_log_any_sampled = fill(NaN, k_top)
     end
 
     if k_top < length(logL_fail_linear_all_nominal)
         println("\nLinear, All:")
         top_indices_fail_linear_all_nominal = partialsortperm(
             logL_fail_linear_all_nominal, 1:k_top, rev=true)
-        # println(top_indices_fail_linear_all)
-        println("log-likelihoods nominal: ", 
-            logL_fail_linear_all_nominal[top_indices_fail_linear_all_nominal])
-        println("log-likelihoods sampled: ",
-            logL_fail_linear_all_sampled[top_indices_fail_linear_all_nominal])
+
+        top_logL_fail_linear_all_nominal = logL_fail_linear_all_nominal[top_indices_fail_linear_all_nominal]
+        top_logL_fail_linear_all_sampled = logL_fail_linear_all_sampled[top_indices_fail_linear_all_nominal]
+
+        println("top indices: ", top_indices_fail_linear_all_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_linear_all_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_linear_all_sampled)
+    else
+        top_indices_fail_linear_all_nominal = ones(Int, k_top)
+        top_logL_fail_linear_all_nominal = fill(NaN, k_top)
+        top_logL_fail_linear_all_sampled = fill(NaN, k_top)
     end
 
     if k_top < length(logL_fail_log_all_nominal)
         println("\nLog, All:")
         top_indices_fail_log_all_nominal = partialsortperm(
             logL_fail_log_all_nominal, 1:k_top, rev=true)
-        # println(top_indices_fail_log_all)
-        println("log-likelihoods nominal: ", 
-            logL_fail_log_all_nominal[top_indices_fail_log_all_nominal])
-        println("log-likelihoods sampled: ",
-            logL_fail_log_all_sampled[top_indices_fail_log_all_nominal])
+
+        top_logL_fail_log_all_nominal = logL_fail_log_all_nominal[top_indices_fail_log_all_nominal]
+        top_logL_fail_log_all_sampled = logL_fail_log_all_sampled[top_indices_fail_log_all_nominal]
+
+        println("top indices: ", top_indices_fail_log_all_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_log_all_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_log_all_sampled)
+    else
+        top_indices_fail_log_all_nominal = ones(Int, k_top)
+        top_logL_fail_log_all_nominal = fill(NaN, k_top)
+        top_logL_fail_log_all_sampled = fill(NaN, k_top)
     end
 
     if k_top < length(logL_fail_linear_half_nominal)
         println("\nLinear, Half:")
         top_indices_fail_linear_half_nominal = partialsortperm(
             logL_fail_linear_half_nominal, 1:k_top, rev=true)
-        # println(top_indices_fail_linear_half)
-        println("log-likelihoods nominal: ", 
-            logL_fail_linear_half_nominal[top_indices_fail_linear_half_nominal])
-        println("log-likelihoods sampled: ",
-            logL_fail_linear_half_sampled[top_indices_fail_linear_half_nominal])
+
+        top_logL_fail_linear_half_nominal = logL_fail_linear_half_nominal[top_indices_fail_linear_half_nominal]
+        top_logL_fail_linear_half_sampled = logL_fail_linear_half_sampled[top_indices_fail_linear_half_nominal]
+
+        println("top indices: ", top_indices_fail_linear_half_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_linear_half_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_linear_half_sampled)
+    else
+        top_indices_fail_linear_half_nominal = ones(Int, k_top)
+        top_logL_fail_linear_half_nominal = fill(NaN, k_top)
+        top_logL_fail_linear_half_sampled = fill(NaN, k_top)
     end
 
     if k_top < length(logL_fail_log_half_nominal)
         println("\nLog, Half:")
         top_indices_fail_log_half_nominal = partialsortperm(
             logL_fail_log_half_nominal, 1:k_top, rev=true)
+
+        top_logL_fail_log_half_nominal = logL_fail_log_half_nominal[top_indices_fail_log_half_nominal]
+        top_logL_fail_log_half_sampled = logL_fail_log_half_sampled[top_indices_fail_log_half_nominal]
+
         # println(top_indices_fail_log_half)
-        println("log-likelihoods nominal: ", 
-            logL_fail_log_half_nominal[top_indices_fail_log_half_nominal])
-        println("log-likelihoods sampled: ",
-            logL_fail_log_half_sampled[top_indices_fail_log_half_nominal])
+        println("top indices: ", top_indices_fail_log_half_nominal)
+        println("log-likelihoods nominal: ", top_logL_fail_log_half_nominal)
+        println("log-likelihoods sampled: ", top_logL_fail_log_half_sampled)
+    else
+        top_indices_fail_log_half_nominal = ones(Int, k_top)
+        top_logL_fail_log_half_nominal = fill(NaN, k_top)
+        top_logL_fail_log_half_sampled = fill(NaN, k_top)
     end
+
+    # Save to CSV the failure checks
+    CSV.write(joinpath(save_dir, "failure_checks_sim$simulation.csv"), 
+        DataFrame(
+            traj_ind=1:num_trajectories,
+            is_fail_linear_any=is_fail_linear_any,
+            is_fail_log_any=is_fail_log_any,
+            is_fail_linear_all=is_fail_linear_all,
+            is_fail_log_all=is_fail_log_all,
+            is_fail_linear_half=is_fail_linear_half,
+            is_fail_log_half=is_fail_log_half,
+            num_time_fails_linear=num_time_fails_linear,
+            num_time_fails_log=num_time_fails_log
+        )
+    )
+
+    # Save to CSV the likelihoods for the top k failures if they exist
+    CSV.write(joinpath(save_dir, "top_k_failures_sim$simulation.csv"), 
+        DataFrame(
+            log_likelihood_fail_linear_any_nominal=top_logL_fail_linear_any_nominal,
+            log_likelihood_fail_linear_any_sampled=top_logL_fail_linear_any_sampled,
+            log_likelihood_fail_log_any_nominal=top_logL_fail_log_any_nominal,
+            log_likelihood_fail_log_any_sampled=top_logL_fail_log_any_sampled,
+            log_likelihood_fail_linear_all_nominal=top_logL_fail_linear_all_nominal,
+            log_likelihood_fail_linear_all_sampled=top_logL_fail_linear_all_sampled,
+            log_likelihood_fail_log_all_nominal=top_logL_fail_log_all_nominal,
+            log_likelihood_fail_log_all_sampled=top_logL_fail_log_all_sampled,
+            log_likelihood_fail_linear_half_nominal=top_logL_fail_linear_half_nominal,
+            log_likelihood_fail_linear_half_sampled=top_logL_fail_linear_half_sampled,
+            log_likelihood_fail_log_half_nominal=top_logL_fail_log_half_nominal,
+            log_likelihood_fail_log_half_sampled=top_logL_fail_log_half_sampled
+        )
+    )
+
 
 end
 
@@ -686,7 +774,7 @@ end
 ###############################
 function main()
     # Define parameters (using the same dataset for both scenes)
-    dataset = "HenryCoe"
+    dataset = "Shasta"
     simulation = 1
     moisture_level = "moist"
     
@@ -697,7 +785,7 @@ function main()
     # run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
     # run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
 
-    run_most_likely_failure(burn_scene, dataset)
+    run_most_likely_failure(burn_scene, dataset, simulation)
 end
 
 main()
