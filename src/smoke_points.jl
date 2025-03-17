@@ -9,7 +9,7 @@ Given a polygon that represents the burnt region, we sample n_samples from the
 interior of the polygon.
 """
 function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
-        k_times::Int=10)
+        k_times::Int=10, verbose::Bool=false)
     # Assert that the polygon is a polygon
     @assert isa(burnt_poly, Polygon)
 
@@ -22,7 +22,9 @@ function sample_smoke_from_poly(burnt_poly::Polygon, n_samples::Int;
             smoke_samples = LazySets.sample(burnt_poly, n_samples)
             return smoke_samples
         catch e
-            println("------> Sampling failed at k_ind = ", k_ind)
+            if verbose
+                println("------> Sampling failed at k_ind = ", k_ind)
+            end
 
             if k_ind == k_times
                 println("Error: ", e)
@@ -42,7 +44,8 @@ Given a burn_scene object, we sample the smoke from the interior of the burnt
 region at time t.
 """
 function sample_smoke_from_scene(burn_scene_obj::BurnScene, 
-                                 n_samples::Int, t_ind::Int64)
+                                 n_samples::Int, t_ind::Int64;
+                                 verbose::Bool=false)
     # If there is no smoke to sample, return an empty array
     if t_ind <= 1
         return []
@@ -60,8 +63,10 @@ function sample_smoke_from_scene(burn_scene_obj::BurnScene,
     # stack them all together as one array
     smoke_samples = vcat(smoke_samples...)
 
-    println("Number of smoke samples: ", length(smoke_samples), 
-                " of ", (t_ind - 1) *n_samples)
+    if verbose
+        println("Number of smoke samples: ", length(smoke_samples), 
+                    " of ", (t_ind - 1) *n_samples)
+    end
 
     return smoke_samples
 end

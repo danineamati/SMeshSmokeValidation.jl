@@ -25,6 +25,7 @@ export
     # Wind Distribution
     WindDistribution,
     wind_dir_likelihood_circ,
+    to_wind_vec,
     # Disturbances
     FullDisturbances,
     FullDisturbanceTrajectory,

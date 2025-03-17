@@ -446,6 +446,241 @@ function run_changing_wind_scene(burn_scene::BurnScene, dataset::String) #, mois
     println("=== Changing Wind Scene Completed ===\n")
 end
 
+
+
+function run_most_likely_failure(burn_scene::BurnScene, dataset::String)
+    println("\n=== Running Disturbance Example ===")
+
+    # Reset Random seed for reproducibility
+    Random.seed!(42)
+    
+    # Define the save directory using joinpath
+    save_dir = joinpath("plots", "most_likely_failure", dataset)
+    if !isdir(save_dir)
+        mkpath(save_dir)
+    end
+
+    Q = burn_scene.Q
+
+    # Choose disturbance distributions based on save_dir
+    if dataset == "HenryCoe"
+        disturb = HENRY_COE_FUZZED(Q)
+        disturb_nominal = HENRY_COE_NOMINAL(Q)
+    elseif dataset == "Malibu"
+        disturb = MALIBU_FUZZED(Q)
+        disturb_nominal = MALIBU_NOMINAL(Q)
+    elseif dataset == "Shasta"
+        disturb = SHASTA_FUZZED(Q)
+        disturb_nominal = SHASTA_NOMINAL(Q)
+    else
+        println("Dataset not recognized. Using default disturbance.")
+        disturb = DEFAULT_DISTURBANCE(Q)
+        disturb_nominal = DEFAULT_DISTURBANCE(Q)
+    end
+
+    # Sample the distribution trajectories and compute likelihoods
+    num_timesteps = 10
+    num_trajectories = 2000
+    trajectories = [ sample_disturbances(disturb, num_timesteps) for _ in 1:num_trajectories ]
+    loglikelihoods_sampled = [ disturbance_trajectory_log_likelihood(disturb, traj) for traj in trajectories ]
+    loglikelihoods_nominal = [ disturbance_trajectory_log_likelihood(disturb_nominal, traj) for traj in trajectories ]
+
+    # Get the sensor locations
+    sensor_locations = burn_scene.snode_locations
+    sensor_locations_3D = [ [pt[1], pt[2], 0.0] for pt in sensor_locations ]
+
+    # Get the perimeter definitions
+    perimeter_nodes = burn_scene.perimeter_sample_points
+    perimeter_nodes_3D = [ [pt[1], pt[2], 0.0] for pt in perimeter_nodes ]
+
+    # Define the failure arrays
+    num_timesteps = length(burn_scene.t) + 1
+    num_sensor_nodes = length(burn_scene.snode_locations)
+    num_perimeter_nodes = length(perimeter_nodes)
+
+    println("Number of timesteps: ", num_timesteps)
+    println("Number of sensor nodes: ", num_sensor_nodes)
+    println("Number of perimeter nodes: ", num_perimeter_nodes)
+
+    sensor_readings = zeros(Float64, num_trajectories, num_sensor_nodes, num_timesteps)
+    perimeter_readings = zeros(Float64, num_trajectories, num_perimeter_nodes, num_timesteps)
+
+    is_fail_linear = zeros(Bool, num_trajectories, num_timesteps)
+    is_fail_log = zeros(Bool, num_trajectories, num_timesteps)
+
+    is_fail_linear_any = zeros(Bool, num_trajectories)
+    is_fail_log_any = zeros(Bool, num_trajectories)
+    is_fail_linear_all = zeros(Bool, num_trajectories)
+    is_fail_log_all = zeros(Bool, num_trajectories)
+    is_fail_linear_half = zeros(Bool, num_trajectories)
+    is_fail_log_half = zeros(Bool, num_trajectories)
+
+    num_time_fails_linear = zeros(Int, num_trajectories)
+    num_time_fails_log = zeros(Int, num_trajectories)
+
+    # Now run the simulations from the disturbances 
+    for (traj_ind, traj) in enumerate(trajectories)
+        h_plume = traj.height
+        air_class = "D" # Could be variable in the future
+
+        # Generate the smoke samples
+        n_smoke_samples = 10
+        smoke_samples_per_time = gen_smoke_samples_over_time(burn_scene, 
+            n_smoke_samples=n_smoke_samples)
+
+        # Generate the plumes
+        plumes_per_time = gen_plumes_over_time(smoke_samples_per_time, 
+            Q, h_plume, air_class)
+
+        # Convert the wind directions and speeds to vectors
+        wind_vecs = to_wind_vec(traj.wind_dirs, traj.wind_speeds)
+
+        # Generate the sensor readings
+        # Sensor readings are vectors of vectors, but we need to store them
+        # in a matrix. So, we need to convert them to a matrix
+        sensor_readings[traj_ind, :, :] = hcat(
+            gen_sensor_readings_of_plume(
+                plumes_per_time, sensor_locations_3D, wind_vecs)...)
+
+        # Generate the perimeter readings
+        perimeter_readings[traj_ind, :, :] = hcat(
+            gen_sensor_readings_of_plume(
+                plumes_per_time, perimeter_nodes_3D, wind_vecs)...)
+    end
+
+    # Convert the sensor readings to log10
+    sensor_readings_log = log10.(sensor_readings)
+    perimeter_readings_log = log10.(perimeter_readings)
+
+    # Check if failure (linear and log scales)
+    for traj_ind in 1:num_trajectories
+        for t in 1:num_timesteps
+            is_fail_linear[traj_ind, t] = is_failure(
+                sensor_readings_log[traj_ind, :, t],
+                perimeter_readings_log[traj_ind, :, t],
+                convert_to_linear=true)
+            is_fail_log[traj_ind, t] = is_failure(
+                sensor_readings_log[traj_ind, :, t],
+                perimeter_readings_log[traj_ind, :, t],
+                convert_to_linear=false)
+        end
+
+        is_fail_linear_any[traj_ind] = any(is_fail_linear[traj_ind, :])
+        is_fail_log_any[traj_ind] = any(is_fail_log[traj_ind, :])
+        is_fail_linear_all[traj_ind] = all(is_fail_linear[traj_ind, :])
+        is_fail_log_all[traj_ind] = all(is_fail_log[traj_ind, :])
+
+        # Check if half of the timesteps fail
+        is_fail_linear_half[traj_ind] = sum(is_fail_linear[traj_ind, :]) >= num_timesteps / 2
+        is_fail_log_half[traj_ind] = sum(is_fail_log[traj_ind, :]) >= num_timesteps / 2
+
+        num_time_fails_linear[traj_ind] = sum(is_fail_linear[traj_ind, :])
+        num_time_fails_log[traj_ind] = sum(is_fail_log[traj_ind, :])
+    end
+
+    # Print the number of failures
+    println("Number of trajectories: ", num_trajectories)
+    println("Number of failures (linear, any): ", sum(is_fail_linear_any))
+    println("Number of failures (log, any): ", sum(is_fail_log_any))
+    println("Number of failures (linear, all): ", sum(is_fail_linear_all))
+    println("Number of failures (log, all): ", sum(is_fail_log_all))
+    println("Number of failures (linear, half): ", sum(is_fail_linear_half))
+    println("Number of failures (log, half): ", sum(is_fail_log_half))
+
+    println("Median number of timestep failures (linear): ", median(num_time_fails_linear))
+    println("Median number of timestep failures (log): ", median(num_time_fails_log))
+    println("Mean number of timestep failures (linear): ", mean(num_time_fails_linear))
+    println("Mean number of timestep failures (log): ", mean(num_time_fails_log))
+
+    # Filter the log-likelihoods based on the failure criteria
+    # Sampled
+    logL_fail_linear_any_sampled = loglikelihoods_sampled[is_fail_linear_any]
+    logL_fail_log_any_sampled = loglikelihoods_sampled[is_fail_log_any]
+    logL_fail_linear_all_sampled = loglikelihoods_sampled[is_fail_linear_all]
+    logL_fail_log_all_sampled = loglikelihoods_sampled[is_fail_log_all]
+    logL_fail_linear_half_sampled = loglikelihoods_sampled[is_fail_linear_half]
+    logL_fail_log_half_sampled = loglikelihoods_sampled[is_fail_log_half]
+
+    # Nominal
+    logL_fail_linear_any_nominal = loglikelihoods_nominal[is_fail_linear_any]
+    logL_fail_log_any_nominal = loglikelihoods_nominal[is_fail_log_any]
+    logL_fail_linear_all_nominal = loglikelihoods_nominal[is_fail_linear_all]
+    logL_fail_log_all_nominal = loglikelihoods_nominal[is_fail_log_all]
+    logL_fail_linear_half_nominal = loglikelihoods_nominal[is_fail_linear_half]
+    logL_fail_log_half_nominal = loglikelihoods_nominal[is_fail_log_half]
+
+    # Get the top k failure likelihoods
+    k_top = 10
+    println("\n--- Top $k_top Disturbance Trajectories (Linear, Any) ---")
+    if k_top < length(logL_fail_linear_any_nominal)
+        println("\nLinear, Any:")
+        top_indices_fail_linear_any_nominal = partialsortperm(
+            logL_fail_linear_any_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_linear_any)
+        println("log-likelihoods nominal: ", 
+            logL_fail_linear_any_nominal[top_indices_fail_linear_any_nominal])
+        println("log-likelihoods sampled: ", 
+            logL_fail_linear_any_sampled[top_indices_fail_linear_any_nominal])
+    end
+
+    if k_top < length(logL_fail_log_any_nominal)
+        println("\nLog, Any:")
+        top_indices_fail_log_any_nominal = partialsortperm(
+            logL_fail_log_any_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_log_any)
+        println("log-likelihoods nominal: ", 
+            logL_fail_log_any_nominal[top_indices_fail_log_any_nominal])
+        println("log-likelihoods sampled: ",
+            logL_fail_log_any_sampled[top_indices_fail_log_any_nominal])
+    end
+
+    if k_top < length(logL_fail_linear_all_nominal)
+        println("\nLinear, All:")
+        top_indices_fail_linear_all_nominal = partialsortperm(
+            logL_fail_linear_all_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_linear_all)
+        println("log-likelihoods nominal: ", 
+            logL_fail_linear_all_nominal[top_indices_fail_linear_all_nominal])
+        println("log-likelihoods sampled: ",
+            logL_fail_linear_all_sampled[top_indices_fail_linear_all_nominal])
+    end
+
+    if k_top < length(logL_fail_log_all_nominal)
+        println("\nLog, All:")
+        top_indices_fail_log_all_nominal = partialsortperm(
+            logL_fail_log_all_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_log_all)
+        println("log-likelihoods nominal: ", 
+            logL_fail_log_all_nominal[top_indices_fail_log_all_nominal])
+        println("log-likelihoods sampled: ",
+            logL_fail_log_all_sampled[top_indices_fail_log_all_nominal])
+    end
+
+    if k_top < length(logL_fail_linear_half_nominal)
+        println("\nLinear, Half:")
+        top_indices_fail_linear_half_nominal = partialsortperm(
+            logL_fail_linear_half_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_linear_half)
+        println("log-likelihoods nominal: ", 
+            logL_fail_linear_half_nominal[top_indices_fail_linear_half_nominal])
+        println("log-likelihoods sampled: ",
+            logL_fail_linear_half_sampled[top_indices_fail_linear_half_nominal])
+    end
+
+    if k_top < length(logL_fail_log_half_nominal)
+        println("\nLog, Half:")
+        top_indices_fail_log_half_nominal = partialsortperm(
+            logL_fail_log_half_nominal, 1:k_top, rev=true)
+        # println(top_indices_fail_log_half)
+        println("log-likelihoods nominal: ", 
+            logL_fail_log_half_nominal[top_indices_fail_log_half_nominal])
+        println("log-likelihoods sampled: ",
+            logL_fail_log_half_sampled[top_indices_fail_log_half_nominal])
+    end
+
+end
+
+
 ###############################
 # Main Function
 ###############################
@@ -458,9 +693,11 @@ function main()
     # Initialize the scene once
     burn_scene = initialize_scene(dataset, simulation, moisture_level)
 
-    run_disturbance_example(burn_scene, dataset)
+    # run_disturbance_example(burn_scene, dataset)
     # run_burn_scene_with_background(burn_scene, dataset) #, simulation, moisture_level)
     # run_changing_wind_scene(burn_scene, dataset) #, moisture_level)
+
+    run_most_likely_failure(burn_scene, dataset)
 end
 
 main()
