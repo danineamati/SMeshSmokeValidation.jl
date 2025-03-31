@@ -19,7 +19,7 @@ TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 
 [compat]
 CSV = "0.10"
-Colors = "0.12.11"
+Colors = "0.12.11, 0.13"
 DataFrames = "1.7.0"
 Distributions = "0.25"
 FileIO = "1.17"
